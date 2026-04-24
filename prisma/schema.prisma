@@ -12,6 +12,7 @@ model Team {
   slug      String   @unique
   color     String   @default("#4A9FE3")
   league    String   @default("Rec League")
+  active    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   players      Player[]

@@ -11,8 +11,10 @@ export async function GET(request: Request) {
     if (season) gameWhere.season = season
     if (league) gameWhere.league = league
 
+    const activeOnly = searchParams.get('active') === 'true'
     const teamWhere: Record<string, unknown> = {}
     if (league) teamWhere.league = league
+    if (activeOnly) teamWhere.active = true
 
     const teams = await prisma.team.findMany({
       where: teamWhere,
@@ -66,6 +68,20 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Teams GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch teams' }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const team = await prisma.team.update({
+      where: { id: body.id },
+      data: { active: body.active },
+    })
+    return NextResponse.json(team)
+  } catch (error) {
+    console.error('Teams PATCH error:', error)
+    return NextResponse.json({ error: 'Failed to update team' }, { status: 500 })
   }
 }
 

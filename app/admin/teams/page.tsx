@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/admin/AdminLayout'
 
-interface Team { id: string; name: string; slug: string; color: string }
+interface Team { id: string; name: string; slug: string; color: string; active: boolean }
 interface Player { id: string; name: string; number: number; position: string; teamId: string; isSub: boolean; team: Team }
 
 interface EditingPlayer {
@@ -100,6 +100,16 @@ export default function AdminTeamsPage() {
   const deletePlayer = async (id: string) => {
     if (!confirm('Remove this player? All their stats will also be removed.')) return
     await fetch(`/api/admin/players?id=${id}`, { method: 'DELETE' })
+    load()
+  }
+
+  const toggleActive = async (team: Team) => {
+    await fetch('/api/teams', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: team.id, active: !team.active }),
+    })
+    showMsg(`${team.name} marked ${!team.active ? 'active' : 'inactive'}`)
     load()
   }
 
@@ -263,10 +273,23 @@ export default function AdminTeamsPage() {
               const teamPlayers = players.filter(p => p.teamId === team.id && !p.isSub)
               return (
                 <div key={team.id} style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '12px', overflow: 'hidden' }}>
-                  <div style={{ backgroundColor: team.color + '22', borderBottom: `2px solid ${team.color}`, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ backgroundColor: team.color + '22', borderBottom: `2px solid ${team.color}`, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ width: '10px', height: '10px', backgroundColor: team.color, borderRadius: '50%' }} />
-                    <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '16px' }}>{team.name}</h3>
-                    <span style={{ marginLeft: 'auto', color: '#555', fontSize: '12px' }}>{teamPlayers.length} players</span>
+                    <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>{team.name}</h3>
+                    <span style={{ color: '#555', fontSize: '12px' }}>{teamPlayers.length} players</span>
+                    <button
+                      onClick={() => toggleActive(team)}
+                      style={{
+                        marginLeft: 'auto',
+                        backgroundColor: team.active ? '#1a4731' : '#2a2a2a',
+                        color: team.active ? '#27AE60' : '#555',
+                        border: `1px solid ${team.active ? '#27AE60' : '#3a3a3a'}`,
+                        borderRadius: '4px', padding: '2px 10px',
+                        fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      {team.active ? '● ACTIVE' : '○ INACTIVE'}
+                    </button>
                   </div>
                   {teamPlayers.length === 0 ? (
                     <div style={{ color: '#444', padding: '20px', textAlign: 'center', fontSize: '13px' }}>No players yet</div>

@@ -44,7 +44,7 @@ export default function RegisterPage() {
   const [teams, setTeams] = useState<Team[]>([])
 
   useEffect(() => {
-    fetch('/api/teams')
+    fetch('/api/teams?active=true')
       .then(r => r.json())
       .then(data => setTeams(Array.isArray(data) ? data : []))
       .catch(() => {})
@@ -265,7 +265,7 @@ export default function RegisterPage() {
                   {errEl(errors.teamPref)}
                   {teams.length === 0 && (
                     <div style={{ color: '#555', fontSize: '11px', marginTop: '4px' }}>
-                      Teams will appear once captains submit their names.
+                      Registration is not currently open. Check back soon.
                     </div>
                   )}
                 </div>

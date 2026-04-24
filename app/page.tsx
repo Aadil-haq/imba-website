@@ -224,10 +224,11 @@ export default async function HomePage() {
 
           <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 36px)', justifyContent: 'center', marginTop: '28px', flexWrap: 'wrap' }}>
             {[
-              { label: 'Teams',    value: s.stat_teams },
-              { label: 'Season',   value: s.stat_season },
-              { label: 'Location', value: s.stat_location },
-              { label: 'Fee',      value: s.stat_fee },
+              { label: 'Teams',     value: s.stat_teams },
+              { label: 'Divisions', value: s.stat_divisions ?? '2' },
+              { label: 'Season',    value: s.stat_season },
+              { label: 'Location',  value: s.stat_location },
+              { label: 'Fee',       value: s.stat_fee },
             ].map(item => (
               <div key={item.label} style={{ textAlign: 'center' }}>
                 <div style={{ color: '#4A9FE3', fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 900 }}>{item.value}</div>
