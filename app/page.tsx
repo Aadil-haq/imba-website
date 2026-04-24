@@ -222,15 +222,15 @@ export default async function HomePage() {
             </a>
           </div>
 
-          <div style={{ display: 'flex', gap: '36px', justifyContent: 'center', marginTop: '28px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 36px)', justifyContent: 'center', marginTop: '28px', flexWrap: 'wrap' }}>
             {[
               { label: 'Teams',    value: s.stat_teams },
               { label: 'Season',   value: s.stat_season },
               { label: 'Location', value: s.stat_location },
               { label: 'Fee',      value: s.stat_fee },
             ].map(item => (
-              <div key={item.label}>
-                <div style={{ color: '#4A9FE3', fontSize: '22px', fontWeight: 900 }}>{item.value}</div>
+              <div key={item.label} style={{ textAlign: 'center' }}>
+                <div style={{ color: '#4A9FE3', fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 900 }}>{item.value}</div>
                 <div style={{ color: '#555', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{item.label}</div>
               </div>
             ))}
@@ -244,7 +244,7 @@ export default async function HomePage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '6px' }}>{s.season_label}</div>
-              <h2 style={{ color: '#ffffff', fontSize: '28px', fontWeight: 900 }}>{s.section_games_title}</h2>
+              <h2 style={{ color: '#ffffff', fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 900 }}>{s.section_games_title}</h2>
             </div>
             <Link href="/schedule" style={{ color: '#4A9FE3', fontWeight: 600, textDecoration: 'none', fontSize: '14px' }}>View Full Schedule →</Link>
           </div>
@@ -255,9 +255,9 @@ export default async function HomePage() {
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>
               {upcomingGames.map(game => (
-                <div key={game.id} style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '12px', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                <div key={game.id} style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ textAlign: 'center', minWidth: '70px' }}>
                       <div style={{ width: '10px', height: '10px', backgroundColor: game.homeTeam.color, borderRadius: '50%', margin: '0 auto 4px' }} />
                       <div style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>{game.homeTeam.name}</div>
                       <div style={{ color: '#555', fontSize: '11px' }}>HOME</div>
@@ -289,7 +289,7 @@ export default async function HomePage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '6px' }}>Current Season</div>
-              <h2 style={{ color: '#ffffff', fontSize: '28px', fontWeight: 900 }}>League Standings</h2>
+              <h2 style={{ color: '#ffffff', fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 900 }}>League Standings</h2>
             </div>
             <Link href="/standings" style={{ color: '#4A9FE3', fontWeight: 600, textDecoration: 'none', fontSize: '14px' }}>Full Standings →</Link>
           </div>
@@ -299,7 +299,7 @@ export default async function HomePage() {
               No active seasons configured. Go to Admin → Active Seasons to set which seasons appear here.
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: '24px' }}>
               {divisionStandings.map(div => (
                 <div key={div.season} style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '12px', overflow: 'hidden' }}>
                   {/* Division header */}
@@ -362,7 +362,7 @@ export default async function HomePage() {
       {/* Stats Leaders & Announcements */}
       <section style={{ backgroundColor: '#111111', padding: '48px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '48px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '40px' }}>
             {/* Top Performers — client widget with season + category selector */}
             <TopScorersWidget />
 
@@ -402,10 +402,10 @@ export default async function HomePage() {
           <h2 style={{ color: '#ffffff', fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 900, marginBottom: '16px' }}>
             Ready to Play?
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '18px', marginBottom: '32px' }}>
+          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(14px, 3vw, 18px)', marginBottom: '24px' }}>
             {s.cta_subtitle}
           </p>
-          <Link href="/register" style={{ backgroundColor: '#ffffff', color: '#4A9FE3', fontWeight: 800, fontSize: '18px', padding: '16px 48px', borderRadius: '8px', textDecoration: 'none', display: 'inline-block' }}>
+          <Link href="/register" style={{ backgroundColor: '#ffffff', color: '#4A9FE3', fontWeight: 800, fontSize: 'clamp(15px, 3vw, 18px)', padding: '14px 36px', borderRadius: '8px', textDecoration: 'none', display: 'inline-block' }}>
             {s.cta_button_text}
           </Link>
         </div>

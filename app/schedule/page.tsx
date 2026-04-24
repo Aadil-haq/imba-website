@@ -94,12 +94,12 @@ export default function SchedulePage() {
   return (
     <div style={{ backgroundColor: '#111111', minHeight: '100vh' }}>
       {/* Header */}
-      <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '40px 0' }}>
+      <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '24px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px' }}>
             {currentLabel}
           </div>
-          <h1 style={{ color: '#ffffff', fontSize: '36px', fontWeight: 900, marginBottom: '24px' }}>Season Schedule</h1>
+          <h1 style={{ color: '#ffffff', fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 900, marginBottom: '20px' }}>Season Schedule</h1>
 
           {/* Filters */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -174,48 +174,44 @@ export default function SchedulePage() {
                         backgroundColor: '#1a1a1a',
                         border: '1px solid #2a2a2a',
                         borderRadius: '10px',
-                        padding: '16px 20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: '12px',
+                        padding: '14px 16px',
                       }}>
-                        {/* Away Team */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '130px' }}>
-                          <div style={{ width: '10px', height: '10px', backgroundColor: game.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
-                          <span style={{ color: awayWon ? '#ffffff' : '#aaaaaa', fontWeight: awayWon ? 800 : 600, fontSize: '15px' }}>
-                            {game.awayTeam.name}
-                          </span>
+                        {/* Teams + Score row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          {/* Away Team */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                            <div style={{ width: '8px', height: '8px', backgroundColor: game.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                            <span style={{ color: awayWon ? '#ffffff' : '#aaaaaa', fontWeight: awayWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {game.awayTeam.name}
+                            </span>
+                          </div>
+
+                          {/* Score / VS */}
+                          <div style={{ textAlign: 'center', flexShrink: 0, padding: '0 8px' }}>
+                            {game.played ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ color: awayWon ? '#4A9FE3' : '#cccccc', fontWeight: 900, fontSize: '18px' }}>{game.awayScore}</span>
+                                <span style={{ color: '#444', fontSize: '13px' }}>—</span>
+                                <span style={{ color: homeWon ? '#4A9FE3' : '#cccccc', fontWeight: 900, fontSize: '18px' }}>{game.homeScore}</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: '#4A9FE3', fontWeight: 700, fontSize: '14px' }}>{game.time}</span>
+                            )}
+                          </div>
+
+                          {/* Home Team */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
+                            <span style={{ color: homeWon ? '#ffffff' : '#aaaaaa', fontWeight: homeWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {game.homeTeam.name}
+                            </span>
+                            <div style={{ width: '8px', height: '8px', backgroundColor: game.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                          </div>
                         </div>
 
-                        {/* Score / VS */}
-                        <div style={{ textAlign: 'center', minWidth: '110px' }}>
-                          {game.played ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'center' }}>
-                              <span style={{ color: awayWon ? '#4A9FE3' : '#cccccc', fontWeight: 900, fontSize: '22px' }}>{game.awayScore}</span>
-                              <span style={{ color: '#444', fontSize: '14px' }}>—</span>
-                              <span style={{ color: homeWon ? '#4A9FE3' : '#cccccc', fontWeight: 900, fontSize: '22px' }}>{game.homeScore}</span>
-                            </div>
-                          ) : (
-                            <span style={{ color: '#4A9FE3', fontWeight: 700, fontSize: '16px' }}>{game.time}</span>
-                          )}
-                        </div>
-
-                        {/* Home Team */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '130px', justifyContent: 'flex-end' }}>
-                          <span style={{ color: homeWon ? '#ffffff' : '#aaaaaa', fontWeight: homeWon ? 800 : 600, fontSize: '15px' }}>
-                            {game.homeTeam.name}
-                          </span>
-                          <div style={{ width: '10px', height: '10px', backgroundColor: game.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
-                        </div>
-
-                        {/* Meta */}
-                        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                          <div style={{ color: '#555', fontSize: '11px' }}>{game.location}</div>
-                          <div style={{
-                            display: 'inline-block',
-                            marginTop: '4px',
+                        {/* Meta row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ color: '#555', fontSize: '11px' }}>{game.location}</span>
+                          <span style={{
                             padding: '2px 8px',
                             borderRadius: '4px',
                             fontSize: '11px',
@@ -224,7 +220,7 @@ export default function SchedulePage() {
                             color: game.played ? '#27AE60' : '#888',
                           }}>
                             {game.played ? 'FINAL' : 'UPCOMING'}
-                          </div>
+                          </span>
                           {game.driveUrl && (
                             <a
                               href={game.driveUrl}
@@ -234,8 +230,6 @@ export default function SchedulePage() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '4px',
-                                marginTop: '5px',
-                                marginLeft: '4px',
                                 backgroundColor: '#0f2a1a',
                                 color: '#27AE60',
                                 border: '1px solid #27AE60',

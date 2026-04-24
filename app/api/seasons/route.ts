@@ -3,14 +3,14 @@ import { prisma } from '@/lib/db'
 
 export async function GET() {
   try {
-    // Get all distinct season + league combos that have games
-    const games = await prisma.game.findMany({
-      select: { season: true, league: true },
-      distinct: ['season', 'league'],
-      orderBy: { season: 'desc' },
+    // Group by season+league, ordered by the most recent game date so newest season always comes first
+    const groups = await prisma.game.groupBy({
+      by: ['season', 'league'],
+      _max: { date: true },
+      orderBy: { _max: { date: 'desc' } },
     })
 
-    const seasons = games.map(g => ({ season: g.season, league: g.league }))
+    const seasons = groups.map(g => ({ season: g.season, league: g.league }))
     return NextResponse.json(seasons)
   } catch (error) {
     console.error('Seasons GET error:', error)

@@ -89,12 +89,12 @@ export default function StandingsPage() {
   return (
     <div style={{ backgroundColor: '#111111', minHeight: '100vh' }}>
       {/* Header */}
-      <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '40px 0' }}>
+      <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '24px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px' }}>
             {currentLabel}
           </div>
-          <h1 style={{ color: '#ffffff', fontSize: '36px', fontWeight: 900 }}>League Standings</h1>
+          <h1 style={{ color: '#ffffff', fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 900 }}>League Standings</h1>
         </div>
       </div>
 

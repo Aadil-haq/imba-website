@@ -101,12 +101,12 @@ export default function StatsPage() {
   return (
     <div style={{ backgroundColor: '#111111', minHeight: '100vh' }}>
       {/* Header */}
-      <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '40px 0' }}>
+      <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '24px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px' }}>
             {currentSeasonLabel}
           </div>
-          <h1 style={{ color: '#ffffff', fontSize: '36px', fontWeight: 900 }}>Statistical Leaders</h1>
+          <h1 style={{ color: '#ffffff', fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 900 }}>Statistical Leaders</h1>
         </div>
       </div>
 
@@ -149,7 +149,7 @@ export default function StatsPage() {
               key={c.key}
               onClick={() => setCategory(c.key)}
               style={{
-                padding: '10px 22px',
+                padding: '8px 14px',
                 borderRadius: '6px',
                 fontWeight: 700,
                 fontSize: '14px',
