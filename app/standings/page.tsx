@@ -128,14 +128,14 @@ export default function StandingsPage() {
             No standings data for this season
           </div>
         ) : (() => {
-          // 12-team seasons: top 8 make playoffs. All other sizes: everyone makes playoffs.
-          const playoffCutoff = standings.length === 12 ? 8 : standings.length
+          // Everyone makes playoffs. In 12-team seasons, top 4 earn a first-round bye.
+          const byeCutoff = standings.length === 12 ? 4 : 0
           return (
           <>
             {standings.length === 12 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <div style={{ width: '3px', height: '20px', backgroundColor: '#4A9FE3', borderRadius: '2px' }} />
-                <span style={{ color: '#4A9FE3', fontSize: '13px', fontWeight: 600 }}>Top 8 teams advance to playoffs</span>
+                <div style={{ width: '3px', height: '20px', backgroundColor: '#F5A623', borderRadius: '2px' }} />
+                <span style={{ color: '#F5A623', fontSize: '13px', fontWeight: 600 }}>All teams make playoffs · Top 4 seeds earn a first-round bye</span>
               </div>
             )}
 
@@ -166,7 +166,9 @@ export default function StandingsPage() {
                     <tr key={`${team.teamId}-${i}`} style={{
                       backgroundColor: i % 2 === 0 ? '#1a1a1a' : '#141414',
                       borderBottom: '1px solid #222',
-                      borderLeft: i < playoffCutoff ? `3px solid ${team.teamColor}` : '3px solid transparent',
+                      borderLeft: byeCutoff > 0 && i < byeCutoff
+                        ? `3px solid #F5A623`
+                        : `3px solid ${team.teamColor}`,
                     }}>
                       <td style={{ padding: '14px 16px', fontWeight: 800, fontSize: '15px', color: i < 2 ? '#4A9FE3' : '#888' }}>
                         #{i + 1}
@@ -175,7 +177,11 @@ export default function StandingsPage() {
                         <Link href={`/teams/${team.teamSlug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <div style={{ width: '12px', height: '12px', backgroundColor: team.teamColor, borderRadius: '50%', flexShrink: 0 }} />
                           <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>{team.teamName}</span>
-                          {i < playoffCutoff && (
+                          {byeCutoff > 0 && i < byeCutoff ? (
+                            <span style={{ backgroundColor: '#3a2800', color: '#F5A623', fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', marginLeft: '4px' }}>
+                              BYE
+                            </span>
+                          ) : (
                             <span style={{ backgroundColor: '#1a3a5c', color: '#4A9FE3', fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', marginLeft: '4px' }}>
                               PLAYOFF
                             </span>
@@ -210,11 +216,17 @@ export default function StandingsPage() {
             </div>
 
             <div style={{ marginTop: '20px', display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-              {standings.length === 12 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '12px', height: '12px', backgroundColor: '#4A9FE3', borderRadius: '2px' }} />
-                  <span style={{ color: '#888', fontSize: '12px' }}>Colored border = playoff position</span>
-                </div>
+              {byeCutoff > 0 && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: '#F5A623', borderRadius: '2px' }} />
+                    <span style={{ color: '#888', fontSize: '12px' }}>Gold border = first-round bye</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: '#4A9FE3', borderRadius: '2px' }} />
+                    <span style={{ color: '#888', fontSize: '12px' }}>Blue border = playoff</span>
+                  </div>
+                </>
               )}
               <span style={{ color: '#888', fontSize: '12px' }}>PF = Points For · PA = Points Against · DIFF = Point Differential</span>
             </div>
