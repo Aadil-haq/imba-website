@@ -25,7 +25,7 @@ export async function POST(request: Request) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: `IMBA ${league} Registration – Summer 2026`,
+              name: `IMBA ${league} Registration`,
               description: `${body.firstName} ${body.lastName} · ${body.position}`,
               images: [`${siteUrl}/logo.png`],
             },

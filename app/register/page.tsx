@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 
 const DIVISION_2_OPTIONS = [
-  'Summer D2 2026 Comp Division',
-  'Summer D2 2026 Rec Division',
+  'D2 Comp Division',
+  'D2 Rec Division',
 ]
 
 const POSITIONS = [
@@ -133,7 +133,7 @@ export default function RegisterPage() {
       {/* Header */}
       <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '48px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '10px' }}>Summer 2026</div>
+          <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '10px' }}>Irving Masjid Basketball Association</div>
           <h1 style={{ color: '#ffffff', fontSize: '40px', fontWeight: 900, marginBottom: '8px' }}>Register to Play</h1>
           <p style={{ color: '#666', fontSize: '16px' }}>Join the Irving Masjid Basketball Association · $80 per player</p>
         </div>
@@ -216,12 +216,12 @@ export default function RegisterPage() {
                         {opt.includes('Comp') ? (
                           <>
                             <div style={{ marginBottom: '2px' }}>🏆 Comp Division</div>
-                            <div style={{ color: form.league === opt ? '#4A9FE380' : '#444', fontSize: '11px', fontWeight: 400 }}>Summer D2 2026</div>
+                            <div style={{ color: form.league === opt ? '#4A9FE380' : '#444', fontSize: '11px', fontWeight: 400 }}>D2 Division</div>
                           </>
                         ) : (
                           <>
                             <div style={{ marginBottom: '2px' }}>🏀 Rec Division</div>
-                            <div style={{ color: form.league === opt ? '#4A9FE380' : '#444', fontSize: '11px', fontWeight: 400 }}>Summer D2 2026</div>
+                            <div style={{ color: form.league === opt ? '#4A9FE380' : '#444', fontSize: '11px', fontWeight: 400 }}>D2 Division</div>
                           </>
                         )}
                       </button>
@@ -275,7 +275,7 @@ export default function RegisterPage() {
             {/* Payment */}
             <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '14px', padding: '28px', marginBottom: '24px' }}>
               <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '17px', marginBottom: '6px' }}>Payment</h3>
-              <p style={{ color: '#555', fontSize: '13px', marginBottom: '20px' }}>Registration fee: $80.00 · Summer 2026 season</p>
+              <p style={{ color: '#555', fontSize: '13px', marginBottom: '20px' }}>Registration fee: $80.00</p>
 
               <div style={{ backgroundColor: '#111', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '18px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{ fontSize: '28px' }}>💳</div>
@@ -319,7 +319,7 @@ export default function RegisterPage() {
             <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '14px', padding: '24px', marginBottom: '16px', position: 'sticky', top: '80px' }}>
               <h3 style={{ color: '#4A9FE3', fontWeight: 700, fontSize: '13px', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '18px' }}>Season Details</h3>
               {[
-                { label: 'Season', value: 'Summer 2026' },
+                { label: 'League', value: 'IMBA D2' },
                 { label: 'Location', value: 'Irving Masjid Gym' },
                 { label: 'Game Days', value: 'Sundays' },
                 { label: 'Times', value: '1:00 PM – 7:00 PM' },
