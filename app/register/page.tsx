@@ -131,16 +131,16 @@ export default function RegisterPage() {
   return (
     <div style={{ backgroundColor: '#111111', minHeight: '100vh' }}>
       {/* Header */}
-      <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '48px 0' }}>
+      <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '24px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '10px' }}>Irving Masjid Basketball Association</div>
-          <h1 style={{ color: '#ffffff', fontSize: '40px', fontWeight: 900, marginBottom: '8px' }}>Register to Play</h1>
-          <p style={{ color: '#666', fontSize: '16px' }}>Join the Irving Masjid Basketball Association · $80 per player</p>
+          <h1 style={{ color: '#ffffff', fontSize: 'clamp(26px, 5vw, 40px)', fontWeight: 900, marginBottom: '8px' }}>Register to Play</h1>
+          <p style={{ color: '#666', fontSize: 'clamp(14px, 3vw, 16px)' }}>Join the Irving Masjid Basketball Association · $80 per player</p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 340px', gap: '40px', alignItems: 'start' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
 
           {/* Form */}
           <form onSubmit={handleSubmit} style={{ maxWidth: '620px' }}>
@@ -148,7 +148,7 @@ export default function RegisterPage() {
             {/* Personal Info */}
             <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '14px', padding: '28px', marginBottom: '20px' }}>
               <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '17px', marginBottom: '22px' }}>Personal Information</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label style={labelStyle}>First Name</label>
                   <input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} style={inputStyle(errors.firstName)} placeholder="Ahmad" />
@@ -165,7 +165,7 @@ export default function RegisterPage() {
                 <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle(errors.email)} placeholder="ahmad@example.com" />
                 {errEl(errors.email)}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label style={labelStyle}>Phone</label>
                   <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inputStyle(errors.phone)} placeholder="(972) 555-0100" />
@@ -242,7 +242,7 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label style={labelStyle}>Position</label>
                   <select value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} style={{ ...inputStyle(errors.position), cursor: 'pointer' }}>
