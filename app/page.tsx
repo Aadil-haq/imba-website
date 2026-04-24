@@ -161,7 +161,7 @@ export default async function HomePage() {
       {/* Hero */}
       <section style={{
         background: 'linear-gradient(135deg, #0a0a0a 0%, #111111 50%, #1a1a2e 100%)',
-        minHeight: '92vh',
+        padding: '48px 0 40px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -175,34 +175,34 @@ export default async function HomePage() {
           backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(74,159,227,0.06) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(74,159,227,0.06) 0%, transparent 50%)',
         }} />
         <div className="relative z-10 px-4" style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
             <img
               src="/logo.png"
               alt="IMBA Logo"
-              style={{ width: '200px', height: '200px', objectFit: 'contain' }}
+              style={{ width: '130px', height: '130px', objectFit: 'contain' }}
             />
           </div>
-          <div style={{ color: '#4A9FE3', fontSize: '13px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '14px' }}>
+          <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '10px' }}>
             {s.hero_tagline}
           </div>
-          <h1 style={{ color: '#ffffff', fontSize: 'clamp(28px, 5vw, 52px)', fontWeight: 900, lineHeight: 1.1, marginBottom: '16px' }}>
+          <h1 style={{ color: '#ffffff', fontSize: 'clamp(22px, 4vw, 40px)', fontWeight: 900, lineHeight: 1.1, marginBottom: '10px' }}>
             {s.hero_title_line1}<br />
             <span style={{ color: '#4A9FE3' }}>{s.hero_title_line2}</span>
           </h1>
-          <p style={{ color: '#aaaaaa', fontSize: 'clamp(16px, 2.5vw, 20px)', marginBottom: '40px' }}>
+          <p style={{ color: '#aaaaaa', fontSize: 'clamp(14px, 2vw, 17px)', marginBottom: '24px' }}>
             {s.hero_subtitle}
           </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/schedule" style={{ backgroundColor: '#4A9FE3', color: '#fff', fontWeight: 700, fontSize: '16px', padding: '14px 32px', borderRadius: '8px', textDecoration: 'none' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/schedule" style={{ backgroundColor: '#4A9FE3', color: '#fff', fontWeight: 700, fontSize: '15px', padding: '11px 26px', borderRadius: '8px', textDecoration: 'none' }}>
               {s.hero_cta_primary}
             </Link>
-            <Link href="/register" style={{ backgroundColor: 'transparent', color: '#4A9FE3', fontWeight: 700, fontSize: '16px', padding: '14px 32px', borderRadius: '8px', textDecoration: 'none', border: '2px solid #4A9FE3' }}>
+            <Link href="/register" style={{ backgroundColor: 'transparent', color: '#4A9FE3', fontWeight: 700, fontSize: '15px', padding: '11px 26px', borderRadius: '8px', textDecoration: 'none', border: '2px solid #4A9FE3' }}>
               {s.hero_cta_secondary}
             </Link>
           </div>
 
           {/* Instagram */}
-          <div style={{ marginTop: '28px' }}>
+          <div style={{ marginTop: '16px' }}>
             <a
               href="https://www.instagram.com/imba_0fficial/"
               target="_blank"
@@ -225,7 +225,7 @@ export default async function HomePage() {
             </a>
           </div>
 
-          <div style={{ display: 'flex', gap: '48px', justifyContent: 'center', marginTop: '52px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '36px', justifyContent: 'center', marginTop: '28px', flexWrap: 'wrap' }}>
             {[
               { label: 'Teams',    value: s.stat_teams },
               { label: 'Season',   value: s.stat_season },
@@ -233,8 +233,8 @@ export default async function HomePage() {
               { label: 'Fee',      value: s.stat_fee },
             ].map(item => (
               <div key={item.label}>
-                <div style={{ color: '#4A9FE3', fontSize: '26px', fontWeight: 900 }}>{item.value}</div>
-                <div style={{ color: '#555', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{item.label}</div>
+                <div style={{ color: '#4A9FE3', fontSize: '22px', fontWeight: 900 }}>{item.value}</div>
+                <div style={{ color: '#555', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{item.label}</div>
               </div>
             ))}
           </div>
@@ -242,7 +242,7 @@ export default async function HomePage() {
       </section>
 
       {/* Upcoming Games */}
-      <section style={{ backgroundColor: '#111111', padding: '80px 0' }}>
+      <section style={{ backgroundColor: '#111111', padding: '48px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
@@ -287,7 +287,7 @@ export default async function HomePage() {
       </section>
 
       {/* Division Standings — one card per active season */}
-      <section style={{ backgroundColor: '#0d0d0d', padding: '80px 0' }}>
+      <section style={{ backgroundColor: '#0d0d0d', padding: '48px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
@@ -363,7 +363,7 @@ export default async function HomePage() {
       </section>
 
       {/* Stats Leaders & Announcements */}
-      <section style={{ backgroundColor: '#111111', padding: '80px 0' }}>
+      <section style={{ backgroundColor: '#111111', padding: '48px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '48px' }}>
             {/* Top Performers — client widget with season + category selector */}
@@ -400,7 +400,7 @@ export default async function HomePage() {
       </section>
 
       {/* CTA Section — fully editable via Admin → Homepage */}
-      <section style={{ backgroundColor: '#4A9FE3', padding: '80px 0' }}>
+      <section style={{ backgroundColor: '#4A9FE3', padding: '48px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ textAlign: 'center' }}>
           <h2 style={{ color: '#ffffff', fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 900, marginBottom: '16px' }}>
             Ready to Play?
