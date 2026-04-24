@@ -182,9 +182,6 @@ export default async function HomePage() {
               style={{ width: '130px', height: '130px', objectFit: 'contain' }}
             />
           </div>
-          <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '10px' }}>
-            {s.hero_tagline}
-          </div>
           <h1 style={{ color: '#ffffff', fontSize: 'clamp(22px, 4vw, 40px)', fontWeight: 900, lineHeight: 1.1, marginBottom: '10px' }}>
             {s.hero_title_line1}<br />
             <span style={{ color: '#4A9FE3' }}>{s.hero_title_line2}</span>
