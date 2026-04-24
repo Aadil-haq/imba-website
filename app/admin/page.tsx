@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import AdminLayout from '@/components/admin/AdminLayout'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
