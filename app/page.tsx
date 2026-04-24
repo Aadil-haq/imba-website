@@ -177,9 +177,9 @@ export default async function HomePage() {
         <div className="relative z-10 px-4" style={{ maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'center' }}>
             <img
-              src="/logo.svg"
+              src="/logo.png"
               alt="IMBA Logo"
-              style={{ width: '200px', height: '200px', objectFit: 'contain', filter: 'drop-shadow(0 4px 24px rgba(74,159,227,0.5))' }}
+              style={{ width: '200px', height: '200px', objectFit: 'contain' }}
             />
           </div>
           <div style={{ color: '#4A9FE3', fontSize: '13px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '14px' }}>

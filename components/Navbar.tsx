@@ -23,10 +23,10 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
             <img
-              src="/logo.svg"
+              src="/logo.png"
               alt="IMBA Logo"
               className="h-10 w-auto"
-              style={{ filter: 'drop-shadow(0 2px 6px rgba(74,159,227,0.4))' }}
+              style={{ filter: 'none' }}
               onError={(e) => {
                 const target = e.target as HTMLImageElement
                 target.style.display = 'none'
