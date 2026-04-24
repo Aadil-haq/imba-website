@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  color     String   @default("#4A9FE3")
+  league    String   @default("Rec League")
+  createdAt DateTime @default(now())
+
+  players      Player[]
+  homeGames    Game[]   @relation("HomeTeam")
+  awayGames    Game[]   @relation("AwayTeam")
+  playerStats  PlayerGameStat[]
+}
+
+model Player {
+  id        String   @id @default(cuid())
+  name      String
+  number    Int
+  position  String   @default("G")
+  isSub     Boolean  @default(false)
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  createdAt DateTime @default(now())
+
+  gameStat  PlayerGameStat[]
+}
+
+model Game {
+  id         String   @id @default(cuid())
+  homeTeamId String
+  awayTeamId String
+  homeScore  Int?
+  awayScore  Int?
+  date       DateTime
+  time       String   @default("7:00 PM")
+  location   String   @default("Irving Masjid Gym")
+  week       Int      @default(1)
+  season     String   @default("Spring 2025")
+  league     String   @default("Rec League")
+  played     Boolean  @default(false)
+  driveUrl   String?
+
+  homeTeam    Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam    Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  playerStats PlayerGameStat[]
+
+  createdAt DateTime @default(now())
+}
+
+model PlayerGameStat {
+  id       String @id @default(cuid())
+  playerId String
+  gameId   String
+  teamId   String
+
+  points     Int @default(0)
+  rebounds   Int @default(0)
+  assists    Int @default(0)
+  steals     Int @default(0)
+  blocks     Int @default(0)
+  turnovers  Int @default(0)
+  twoPtMade  Int @default(0)
+  twoPtAtt   Int @default(0)
+  threeMade  Int @default(0)
+  threeAtt   Int @default(0)
+  ftMade     Int @default(0)
+  ftAtt      Int @default(0)
+
+  player Player @relation(fields: [playerId], references: [id])
+  game   Game   @relation(fields: [gameId], references: [id])
+  team   Team   @relation(fields: [teamId], references: [id])
+
+  @@unique([playerId, gameId])
+}
+
+model Registration {
+  id            String   @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String
+  phone         String
+  age           Int
+  position      String
+  league        String   @default("Rec League")
+  teamPref      String?
+  paymentMethod String   @default("stripe")
+  paymentStatus String   @default("pending")
+  stripeSession String?
+  amount        Int      @default(8000)
+  season        String   @default("Spring 2025")
+  createdAt     DateTime @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  league    String   @default("All")
+  createdAt DateTime @default(now())
+}
+
+model AdminUser {
+  id       String @id @default(cuid())
+  username String @unique
+  password String
+}
+
+model SiteSetting {
+  key   String @id
+  value String
+}
