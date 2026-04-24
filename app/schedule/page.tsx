@@ -38,8 +38,9 @@ const selectStyle = {
 export default function SchedulePage() {
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
+  const [seasonsLoaded, setSeasonsLoaded] = useState(false)
   const [seasonOptions, setSeasonOptions] = useState<SeasonOption[]>([])
-  const [selectedSeason, setSelectedSeason] = useState<string>('all')
+  const [selectedSeason, setSelectedSeason] = useState<string>('')
   const [selectedLeague, setSelectedLeague] = useState<string>('all')
   const [filterTeam, setFilterTeam] = useState('all')
 
@@ -49,22 +50,25 @@ export default function SchedulePage() {
       .then((data: SeasonOption[]) => {
         setSeasonOptions(data)
         if (data.length > 0) setSelectedSeason(data[0].season)
+        setSeasonsLoaded(true)
       })
-      .catch(() => {})
+      .catch(() => setSeasonsLoaded(true))
   }, [])
 
   useEffect(() => {
+    // Don't fetch until seasons have loaded and we have a real season selected
+    if (!seasonsLoaded || !selectedSeason) return
     setLoading(true)
     setFilterTeam('all')
     const params = new URLSearchParams()
-    if (selectedSeason !== 'all') params.set('season', selectedSeason)
+    params.set('season', selectedSeason)
     if (selectedLeague !== 'all') params.set('league', selectedLeague)
 
     fetch(`/api/games?${params}`)
       .then(r => r.json())
       .then(data => { setGames(Array.isArray(data) ? data : []); setLoading(false) })
       .catch(() => { setGames([]); setLoading(false) })
-  }, [selectedSeason, selectedLeague])
+  }, [selectedSeason, selectedLeague, seasonsLoaded])
 
   const leagues = [...new Set(seasonOptions.map(s => s.league))]
   const filteredSeasons = selectedLeague === 'all'
@@ -89,7 +93,7 @@ export default function SchedulePage() {
   }, {} as Record<string, Game[]>)
 
   const dates = Object.keys(byDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-  const currentLabel = selectedSeason === 'all' ? 'All Seasons' : selectedSeason
+  const currentLabel = selectedSeason || 'Loading...'
 
   return (
     <div style={{ backgroundColor: '#111111', minHeight: '100vh' }}>
@@ -107,7 +111,12 @@ export default function SchedulePage() {
               <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>LEAGUE</label>
               <select
                 value={selectedLeague}
-                onChange={e => { setSelectedLeague(e.target.value); setSelectedSeason('all') }}
+                onChange={e => {
+                const l = e.target.value
+                setSelectedLeague(l)
+                const matching = l === 'all' ? seasonOptions : seasonOptions.filter(s => s.league === l)
+                if (matching.length > 0) setSelectedSeason(matching[0].season)
+              }}
                 style={selectStyle}
               >
                 <option value="all">All Leagues</option>
