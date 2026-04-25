@@ -201,7 +201,7 @@ export default function StatsPage() {
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>
-                        {player.playerNumber ? `#${player.playerNumber} ` : ''}{player.playerName}
+                        {player.playerNumber != null ? `#${player.playerNumber} ` : ''}{player.playerName}
                       </div>
                     </td>
                     <td style={{ padding: '14px 16px' }}>

@@ -89,7 +89,7 @@ function StatTable({ stats, teamName, teamColor }: { stats: PlayerStatRow[]; tea
           {stats.map((s, i) => (
             <tr key={s.id} style={{ borderBottom: '1px solid #1e1e1e', backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
               <td style={{ padding: '8px 10px', color: '#ccc', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                {s.player.number ? <span style={{ color: '#555', marginRight: '6px' }}>#{s.player.number}</span> : null}
+                {s.player.number != null ? <span style={{ color: '#555', marginRight: '6px' }}>#{s.player.number}</span> : null}
                 {s.player.name}
               </td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 900, fontSize: '15px' }}>{s.points}</td>
