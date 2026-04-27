@@ -61,3 +61,11 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ saved: results.length })
 }
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const gameId = searchParams.get('gameId')
+  if (!gameId) return NextResponse.json({ error: 'gameId required' }, { status: 400 })
+  const { count } = await prisma.playerGameStat.deleteMany({ where: { gameId } })
+  return NextResponse.json({ deleted: count })
+}
