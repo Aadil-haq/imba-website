@@ -19,9 +19,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div style={{ backgroundColor: '#fff', width: '44px', height: '44px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', padding: '2px' }}>
-                <Image src="/logo.png" alt="IMBA Logo" width={40} height={40} style={{ objectFit: 'contain' }} />
-              </div>
+              <Image src="/logo.png" alt="IMBA Logo" width={44} height={44} style={{ objectFit: 'contain', flexShrink: 0 }} />
               <div>
                 <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '20px' }}>IMBA</div>
                 <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 600 }}>Irving Masjid Basketball</div>
