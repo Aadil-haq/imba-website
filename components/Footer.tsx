@@ -1,11 +1,13 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 const footerLinks = [
   { href: '/schedule', label: 'Schedule' },
   { href: '/standings', label: 'Standings' },
   { href: '/stats', label: 'Stats Leaders' },
   { href: '/teams', label: 'Teams' },
-  { href: '/register', label: 'Register' },
+  { href: 'https://forms.gle/dhRHPR2GqghCNTKv6', label: 'Captain Sign-Up' },
+  { href: '/register', label: 'Player Registration' },
   { href: '/admin', label: 'Admin' },
 ]
 
@@ -17,7 +19,9 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div style={{ backgroundColor: '#4A9FE3', width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fff', fontSize: '20px', flexShrink: 0 }}>I</div>
+              <div style={{ backgroundColor: '#fff', width: '44px', height: '44px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', padding: '2px' }}>
+                <Image src="/logo.png" alt="IMBA Logo" width={40} height={40} style={{ objectFit: 'contain' }} />
+              </div>
               <div>
                 <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '20px' }}>IMBA</div>
                 <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 600 }}>Irving Masjid Basketball</div>
@@ -68,16 +72,19 @@ export default function Footer() {
           <div>
             <h3 style={{ color: '#4A9FE3', fontWeight: 700, fontSize: '14px', marginBottom: '16px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Quick Links</h3>
             <div className="flex flex-col gap-2">
-              {footerLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  style={{ color: '#888888', fontSize: '14px', textDecoration: 'none' }}
-                  className="footer-link"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {footerLinks.map((link) => {
+                const isExternal = link.href.startsWith('http')
+                const style = { color: '#888888', fontSize: '14px', textDecoration: 'none' }
+                return isExternal ? (
+                  <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" style={style} className="footer-link">
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link key={link.href} href={link.href} style={style} className="footer-link">
+                    {link.label}
+                  </Link>
+                )
+              })}
             </div>
           </div>
 
