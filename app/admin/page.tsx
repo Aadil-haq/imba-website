@@ -5,20 +5,26 @@ import { prisma } from '@/lib/db'
 import Link from 'next/link'
 
 async function getDashboardStats() {
-  const [teams, players, games, regs, announcements] = await Promise.all([
-    prisma.team.count(),
-    prisma.player.count(),
-    prisma.game.findMany({ include: { homeTeam: true, awayTeam: true }, orderBy: { date: 'desc' }, take: 5 }),
-    prisma.registration.findMany({ orderBy: { createdAt: 'desc' }, take: 5 }),
-    prisma.announcement.count(),
-  ])
-  const totalGames = await prisma.game.count()
-  const playedGames = await prisma.game.count({ where: { played: true } })
-  const pendingPayments = await prisma.registration.count({ where: { paymentStatus: 'pending' } })
-  const paidPayments = await prisma.registration.count({ where: { paymentStatus: 'paid' } })
-  const totalRegs = await prisma.registration.count()
-
-  return { teams, players, totalGames, playedGames, regs, games, pendingPayments, paidPayments, totalRegs, announcements }
+  try {
+    const [teams, players, games, regs, announcements] = await Promise.all([
+      prisma.team.count(),
+      prisma.player.count(),
+      prisma.game.findMany({ include: { homeTeam: true, awayTeam: true }, orderBy: { date: 'desc' }, take: 5 }),
+      prisma.registration.findMany({ orderBy: { createdAt: 'desc' }, take: 5 }).catch(() => []),
+      prisma.announcement.count().catch(() => 0),
+    ])
+    const [totalGames, playedGames, pendingPayments, paidPayments, totalRegs] = await Promise.all([
+      prisma.game.count(),
+      prisma.game.count({ where: { played: true } }),
+      prisma.registration.count({ where: { paymentStatus: 'pending' } }).catch(() => 0),
+      prisma.registration.count({ where: { paymentStatus: 'paid' } }).catch(() => 0),
+      prisma.registration.count().catch(() => 0),
+    ])
+    return { teams, players, totalGames, playedGames, regs, games, pendingPayments, paidPayments, totalRegs, announcements, error: null }
+  } catch (e) {
+    console.error('Admin dashboard error:', e)
+    return { teams: 0, players: 0, totalGames: 0, playedGames: 0, regs: [], games: [], pendingPayments: 0, paidPayments: 0, totalRegs: 0, announcements: 0, error: String(e) }
+  }
 }
 
 export default async function AdminDashboard() {
@@ -27,6 +33,11 @@ export default async function AdminDashboard() {
   return (
     <AdminLayout>
       <div style={{ padding: '32px' }}>
+        {stats.error && (
+          <div style={{ backgroundColor: '#4a1919', border: '1px solid #e74c3c', borderRadius: '8px', padding: '16px', marginBottom: '24px', color: '#e74c3c', fontSize: '13px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            <strong>Dashboard Error:</strong> {stats.error}
+          </div>
+        )}
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ color: '#ffffff', fontSize: '28px', fontWeight: 900 }}>Dashboard</h1>
           <p style={{ color: '#555', fontSize: '14px' }}>IMBA Spring 2025 Overview</p>
