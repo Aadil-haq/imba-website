@@ -43,6 +43,8 @@ export async function POST(request: Request) {
         location: body.location || 'Irving Masjid Gym',
         week: body.week || 1,
         season: body.season || 'Spring 2025',
+        league: body.league || 'Rec League',
+        played: body.played ?? false,
       },
       include: { homeTeam: true, awayTeam: true },
     })

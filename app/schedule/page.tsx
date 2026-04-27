@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 
-interface Team { id: string; name: string; slug: string; color: string }
+interface Team { id: string; name: string; slug: string; color: string; logo?: string | null }
 interface Game {
   id: string
   homeTeamId: string
@@ -18,6 +18,7 @@ interface Game {
   season: string
   league: string
   played: boolean
+  forfeit: boolean
   driveUrl: string | null
 }
 
@@ -29,6 +30,7 @@ interface PlayerStatRow {
   assists: number
   steals: number
   blocks: number
+  fouls: number
   twoPtMade: number
   twoPtAtt: number
   threeMade: number
@@ -80,7 +82,7 @@ function StatTable({ stats, teamName, teamColor }: { stats: PlayerStatRow[]; tea
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '480px', fontSize: '13px' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #2a2a2a' }}>
-            {['PLAYER', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'FG%', '3P%', 'FT%'].map(h => (
+            {['PLAYER', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3P%', 'FT%'].map(h => (
               <th key={h} style={{ padding: '6px 10px', textAlign: h === 'PLAYER' ? 'left' : 'center', color: '#555', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em' }}>{h}</th>
             ))}
           </tr>
@@ -97,6 +99,7 @@ function StatTable({ stats, teamName, teamColor }: { stats: PlayerStatRow[]; tea
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#ccc' }}>{s.assists}</td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#ccc' }}>{s.steals}</td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#ccc' }}>{s.blocks}</td>
+              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{s.fouls}</td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.twoPtMade + s.threeMade, s.twoPtAtt + s.threeAtt)}</td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.threeMade, s.threeAtt)}</td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.ftMade, s.ftAtt)}</td>
@@ -254,14 +257,79 @@ export default function SchedulePage() {
     ? games
     : games.filter(g => g.homeTeamId === filterTeam || g.awayTeamId === filterTeam)
 
-  const byDate = filtered.reduce((acc, g) => {
-    const d = new Date(g.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-    if (!acc[d]) acc[d] = []
-    acc[d].push(g)
-    return acc
-  }, {} as Record<string, Game[]>)
+  // Determine grouping mode: by week# when multiple games share the same week value
+  const weekCounts: Record<number, number> = {}
+  filtered.forEach(g => { weekCounts[g.week] = (weekCounts[g.week] || 0) + 1 })
+  const useWeekGrouping = Object.values(weekCounts).some(c => c > 1)
 
-  const dates = Object.keys(byDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+  // All teams appearing in the filtered set (for bye calculation)
+  const allTeamsInView = new Map<string, string>()
+  filtered.forEach(g => {
+    allTeamsInView.set(g.homeTeam.id, g.homeTeam.name)
+    allTeamsInView.set(g.awayTeam.id, g.awayTeam.name)
+  })
+
+  // Build groups: key → games[]
+  const groups: Record<string, Game[]> = {}
+  if (useWeekGrouping) {
+    filtered.forEach(g => {
+      const key = String(g.week)
+      if (!groups[key]) groups[key] = []
+      groups[key].push(g)
+    })
+  } else {
+    filtered.forEach(g => {
+      const key = g.date.slice(0, 10)
+      if (!groups[key]) groups[key] = []
+      groups[key].push(g)
+    })
+  }
+
+  const groupKeys = Object.keys(groups).sort((a, b) => {
+    if (useWeekGrouping) return Number(a) - Number(b)
+    return a.localeCompare(b)
+  })
+
+  // Label each group
+  const groupLabelMap: Record<string, { label: string; playoff: boolean; byeTeams: string[] }> = {}
+  const hasPlayoffMarkers = groupKeys.some(k => groups[k].some(g => g.week >= 90))
+
+  const labelPlayoffGroups = (playoffKeys: string[]) => {
+    playoffKeys.forEach((k, i) => {
+      const fromEnd = playoffKeys.length - 1 - i
+      const label = fromEnd === 0 ? 'Finals' : fromEnd === 1 ? 'Semi Finals' : fromEnd === 2 ? 'Quarterfinals' : 'Round 1'
+      groupLabelMap[k] = { label, playoff: true, byeTeams: [] }
+    })
+  }
+
+  if (hasPlayoffMarkers) {
+    const regularKeys = groupKeys.filter(k => groups[k].every(g => g.week < 90))
+    const playoffKeys = groupKeys.filter(k => groups[k].some(g => g.week >= 90))
+    regularKeys.forEach((k, i) => {
+      const playing = new Set(groups[k].flatMap(g => [g.homeTeam.name, g.awayTeam.name]))
+      const byeTeams = [...allTeamsInView.values()].filter(n => !playing.has(n)).sort()
+      groupLabelMap[k] = { label: `Week ${i + 1}`, playoff: false, byeTeams }
+    })
+    labelPlayoffGroups(playoffKeys)
+  } else {
+    const REGULAR = groupKeys.length > 3 ? groupKeys.length - 3 : 0
+    groupKeys.forEach((k, i) => {
+      const playing = new Set(groups[k].flatMap(g => [g.homeTeam.name, g.awayTeam.name]))
+      const byeTeams = [...allTeamsInView.values()].filter(n => !playing.has(n)).sort()
+      if (i < REGULAR) {
+        groupLabelMap[k] = { label: `Week ${i + 1}`, playoff: false, byeTeams }
+      } else {
+        const fromEnd = (groupKeys.length - REGULAR) - 1 - (i - REGULAR)
+        const label = fromEnd === 0 ? 'Finals' : fromEnd === 1 ? 'Semi Finals' : fromEnd === 2 ? 'Quarterfinals' : 'Round 1'
+        groupLabelMap[k] = { label, playoff: true, byeTeams: [] }
+      }
+    })
+  }
+
+  // Keep byDate alias for the render loop
+  const byDate = groups
+  const dates = groupKeys
+
   const currentLabel = selectedSeason || 'Loading...'
 
   return (
@@ -335,17 +403,48 @@ export default function SchedulePage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            {dates.map(dateStr => (
-              <div key={dateStr}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                  <div style={{ backgroundColor: '#4A9FE3', color: '#fff', fontWeight: 700, fontSize: '12px', padding: '4px 12px', borderRadius: '4px' }}>
-                    {dateStr}
+            {dates.map(dateKey => {
+              const { label, playoff, byeTeams } = groupLabelMap[dateKey]
+              const gamesInGroup = groups[dateKey]
+              // For date-grouped: show the date. For week-grouped: show date range from games
+              let dateDisplay = ''
+              if (useWeekGrouping) {
+                const gameDates = [...new Set(gamesInGroup.map(g => g.date.slice(0, 10)))].sort()
+                if (gameDates.length === 1) {
+                  dateDisplay = new Date(gameDates[0] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                } else {
+                  const first = new Date(gameDates[0] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                  const last = new Date(gameDates[gameDates.length - 1] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                  dateDisplay = `${first} – ${last}`
+                }
+              } else {
+                dateDisplay = new Date(dateKey + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+              }
+              return (
+              <div key={dateKey}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: byeTeams.length > 0 ? '8px' : '16px', flexWrap: 'wrap' }}>
+                  <div style={{
+                    backgroundColor: playoff ? '#3a2800' : '#4A9FE3',
+                    color: playoff ? '#F5A623' : '#fff',
+                    fontWeight: 700, fontSize: '13px', padding: '5px 14px', borderRadius: '4px',
+                    border: playoff ? '1px solid #F5A623' : 'none',
+                  }}>
+                    {playoff ? '🏆 ' : ''}{label}
                   </div>
-                  <div style={{ flex: 1, height: '1px', backgroundColor: '#2a2a2a' }} />
+                  <div style={{ flex: 1, height: '1px', backgroundColor: playoff ? '#3a2800' : '#2a2a2a' }} />
+                  <span style={{ color: '#555', fontSize: '12px', whiteSpace: 'nowrap' }}>{dateDisplay}</span>
                 </div>
+                {byeTeams.length > 0 && (
+                  <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ color: '#555', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bye:</span>
+                    {byeTeams.map(t => (
+                      <span key={t} style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: '#777', fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px' }}>{t}</span>
+                    ))}
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {byDate[dateStr].map(game => {
+                  {gamesInGroup.map(game => {
                     const homeWon = game.played && game.homeScore !== null && game.awayScore !== null && game.homeScore > game.awayScore
                     const awayWon = game.played && game.homeScore !== null && game.awayScore !== null && game.awayScore > game.homeScore
 
@@ -368,7 +467,11 @@ export default function SchedulePage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                           {/* Away Team */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                            <div style={{ width: '8px', height: '8px', backgroundColor: game.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                            {game.awayTeam.logo ? (
+                              <img src={game.awayTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '3px', flexShrink: 0 }} />
+                            ) : (
+                              <div style={{ width: '8px', height: '8px', backgroundColor: game.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                            )}
                             <span style={{ color: awayWon ? '#ffffff' : '#aaaaaa', fontWeight: awayWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {game.awayTeam.name}
                             </span>
@@ -392,12 +495,21 @@ export default function SchedulePage() {
                             <span style={{ color: homeWon ? '#ffffff' : '#aaaaaa', fontWeight: homeWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {game.homeTeam.name}
                             </span>
-                            <div style={{ width: '8px', height: '8px', backgroundColor: game.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                            {game.homeTeam.logo ? (
+                              <img src={game.homeTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '3px', flexShrink: 0 }} />
+                            ) : (
+                              <div style={{ width: '8px', height: '8px', backgroundColor: game.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                            )}
                           </div>
                         </div>
 
                         {/* Meta row */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          {useWeekGrouping && (
+                            <span style={{ color: '#555', fontSize: '11px' }}>
+                              {new Date(game.date.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} ·
+                            </span>
+                          )}
                           <span style={{ color: '#555', fontSize: '11px' }}>{game.location}</span>
                           <span style={{
                             padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
@@ -406,6 +518,12 @@ export default function SchedulePage() {
                           }}>
                             {game.played ? 'FINAL' : 'UPCOMING'}
                           </span>
+                          {game.forfeit && (
+                            <span style={{
+                              padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
+                              backgroundColor: '#2a1a1a', color: '#e74c3c',
+                            }}>FORFEIT</span>
+                          )}
                           {game.played && (
                             <span style={{ color: '#444', fontSize: '11px' }}>· tap for box score</span>
                           )}
@@ -431,7 +549,8 @@ export default function SchedulePage() {
                   })}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

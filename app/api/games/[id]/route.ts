@@ -50,10 +50,13 @@ export async function PATCH(
         homeScore: body.homeScore !== undefined ? Number(body.homeScore) : undefined,
         awayScore: body.awayScore !== undefined ? Number(body.awayScore) : undefined,
         played: body.played !== undefined ? body.played : undefined,
+        forfeit: body.forfeit !== undefined ? body.forfeit : undefined,
         date: body.date ? new Date(body.date) : undefined,
         time: body.time || undefined,
         location: body.location || undefined,
         week: body.week !== undefined ? Number(body.week) : undefined,
+        homeTeamId: body.homeTeamId || undefined,
+        awayTeamId: body.awayTeamId || undefined,
       },
       include: { homeTeam: true, awayTeam: true },
     })

@@ -7,8 +7,8 @@ export async function GET(request: Request) {
     const season = searchParams.get('season') || null
     const league = searchParams.get('league') || null
 
-    // Build game filter
-    const gameWhere: Record<string, unknown> = { played: true }
+    // Build game filter — regular season only (exclude playoff markers 97/98/99)
+    const gameWhere: Record<string, unknown> = { played: true, week: { lt: 90 } }
     if (season) gameWhere.season = season
     if (league) gameWhere.league = league
 
@@ -100,7 +100,19 @@ export async function GET(request: Request) {
       return b!.diff - a!.diff
     })
 
-    return NextResponse.json(standings)
+    // Find teams that actually appeared in playoff games for this season
+    let playoffTeamIds: string[] = []
+    if (season) {
+      const playoffGames = await prisma.game.findMany({
+        where: { season, week: { gte: 90 } },
+        select: { homeTeamId: true, awayTeamId: true },
+      })
+      const ids = new Set<string>()
+      playoffGames.forEach(g => { ids.add(g.homeTeamId); ids.add(g.awayTeamId) })
+      playoffTeamIds = [...ids]
+    }
+
+    return NextResponse.json({ standings, playoffTeamIds })
   } catch (error) {
     console.error('Standings GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch standings' }, { status: 500 })

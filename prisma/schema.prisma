@@ -11,6 +11,7 @@ model Team {
   name      String
   slug      String   @unique
   color     String   @default("#4A9FE3")
+  logo      String?
   league    String   @default("Rec League")
   active    Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -47,6 +48,7 @@ model Game {
   season     String   @default("Spring 2025")
   league     String   @default("Rec League")
   played     Boolean  @default(false)
+  forfeit    Boolean  @default(false)
   driveUrl   String?
 
   homeTeam    Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
@@ -74,6 +76,7 @@ model PlayerGameStat {
   threeAtt   Int @default(0)
   ftMade     Int @default(0)
   ftAtt      Int @default(0)
+  fouls      Int @default(0)
 
   player Player @relation(fields: [playerId], references: [id])
   game   Game   @relation(fields: [gameId], references: [id])
@@ -92,6 +95,8 @@ model Registration {
   position      String
   league        String   @default("Rec League")
   teamPref      String?
+  jerseyNumber  String?
+  jerseySize    String?
   paymentMethod String   @default("stripe")
   paymentStatus String   @default("pending")
   stripeSession String?
