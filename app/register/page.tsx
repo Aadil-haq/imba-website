@@ -21,6 +21,7 @@ interface Team {
   id: string
   name: string
   color: string
+  league?: string
 }
 
 interface FormData {
@@ -32,23 +33,44 @@ interface FormData {
   position: string
   league: string
   teamPref: string
+  jerseyNumber: string
+  jerseySize: string
 }
 
 export default function RegisterPage() {
   const [form, setForm] = useState<FormData>({
     firstName: '', lastName: '', email: '', phone: '',
     age: '', position: 'G', league: DIVISION_2_OPTIONS[0], teamPref: '',
+    jerseyNumber: '', jerseySize: '',
   })
-  const [errors, setErrors] = useState<Partial<FormData>>({})
+  const [errors, setErrors] = useState<Partial<FormData & { waiver: string }>>({})
   const [loading, setLoading] = useState(false)
   const [teams, setTeams] = useState<Team[]>([])
+  const [waiverChecked, setWaiverChecked] = useState(false)
 
+  const selectedLeague = form.league.includes('Comp') ? 'Comp' : 'Rec'
+
+  // Reload teams whenever the selected league changes — pulls teams for active seasons of that league
   useEffect(() => {
-    fetch('/api/teams?active=true')
+    fetch(`/api/teams?forSeason=${selectedLeague}`)
       .then(r => r.json())
-      .then(data => setTeams(Array.isArray(data) ? data : []))
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTeams(data)
+        } else {
+          // Fallback: show all active teams filtered by league
+          fetch('/api/teams?active=true')
+            .then(r => r.json())
+            .then(d => setTeams(Array.isArray(d) ? d : []))
+            .catch(() => {})
+        }
+      })
       .catch(() => {})
-  }, [])
+    // Reset team selection when league changes
+    setForm(f => ({ ...f, teamPref: '' }))
+  }, [selectedLeague])
+
+  const filteredTeams = teams
 
   const isComp = form.league.includes('Comp')
 
@@ -59,10 +81,12 @@ export default function RegisterPage() {
     if (!form.email.trim() || !form.email.includes('@')) e.email = 'Valid email required'
     if (!form.phone.trim()) e.phone = 'Required'
     const age = parseInt(form.age)
-    if (!form.age || isNaN(age) || age < 13) e.age = 'Must be 13+'
-    if (isComp && age < 17) e.age = 'Must be 17+ for Comp Division'
+    if (!form.age || isNaN(age) || age < 16) e.age = 'Must be 16+'
     if (!form.position) e.position = 'Required'
     if (!form.teamPref) e.teamPref = 'Please select a team'
+    if (!form.jerseyNumber.trim()) (e as any).jerseyNumber = 'Required'
+    if (!form.jerseySize) (e as any).jerseySize = 'Required'
+    if (!waiverChecked) (e as any).waiver = 'You must agree to the waiver to continue'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -78,7 +102,7 @@ export default function RegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, paymentMethod: 'stripe', amount: 8000 }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({ error: `Server error (${res.status})` }))
       if (!res.ok) throw new Error(data.error || 'Failed to register')
 
       const checkoutRes = await fetch('/api/stripe/checkout', {
@@ -86,7 +110,7 @@ export default function RegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, registrationId: data.id }),
       })
-      const checkoutData = await checkoutRes.json()
+      const checkoutData = await checkoutRes.json().catch(() => ({ error: `Payment server error (${checkoutRes.status})` }))
 
       if (checkoutData.url) {
         window.location.href = checkoutData.url
@@ -150,30 +174,30 @@ export default function RegisterPage() {
               <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '17px', marginBottom: '22px' }}>Personal Information</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label style={labelStyle}>First Name</label>
-                  <input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} style={inputStyle(errors.firstName)} placeholder="Ahmad" />
+                  <label style={labelStyle}>First Name *</label>
+                  <input required value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} style={inputStyle(errors.firstName)} placeholder="Ahmad" />
                   {errEl(errors.firstName)}
                 </div>
                 <div>
-                  <label style={labelStyle}>Last Name</label>
-                  <input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} style={inputStyle(errors.lastName)} placeholder="Hassan" />
+                  <label style={labelStyle}>Last Name *</label>
+                  <input required value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} style={inputStyle(errors.lastName)} placeholder="Hassan" />
                   {errEl(errors.lastName)}
                 </div>
               </div>
               <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>Email</label>
-                <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle(errors.email)} placeholder="ahmad@example.com" />
+                <label style={labelStyle}>Email *</label>
+                <input required type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle(errors.email)} placeholder="ahmad@example.com" />
                 {errEl(errors.email)}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label style={labelStyle}>Phone</label>
-                  <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inputStyle(errors.phone)} placeholder="(972) 555-0100" />
+                  <label style={labelStyle}>Phone *</label>
+                  <input required type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inputStyle(errors.phone)} placeholder="(972) 555-0100" />
                   {errEl(errors.phone)}
                 </div>
                 <div>
-                  <label style={labelStyle}>Age</label>
-                  <input type="number" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} style={inputStyle(errors.age)} placeholder={isComp ? '17+' : '13+'} min="13" />
+                  <label style={labelStyle}>Age *</label>
+                  <input required type="number" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} style={inputStyle(errors.age)} placeholder="16+" min="16" />
                   {errEl(errors.age)}
                 </div>
               </div>
@@ -234,7 +258,7 @@ export default function RegisterPage() {
                   <div style={{ backgroundColor: '#2a1a00', border: '1px solid #F5A623', borderRadius: '8px', padding: '14px', marginTop: '10px' }}>
                     <div style={{ color: '#F5A623', fontWeight: 700, fontSize: '12px', marginBottom: '8px', letterSpacing: '0.06em' }}>⚠️ COMP DIVISION RULES</div>
                     <ul style={{ color: '#aaa', fontSize: '12px', lineHeight: 2, margin: 0, paddingLeft: '16px' }}>
-                      <li>Must be <strong style={{ color: '#fff' }}>17 or older</strong> to participate</li>
+                      <li>Must be <strong style={{ color: '#fff' }}>16 or older</strong> to participate</li>
                       <li>Prior league experience not required, but teams may be <strong style={{ color: '#fff' }}>vetoed</strong> if skill level is too high or too low</li>
                       <li>Max <strong style={{ color: '#fff' }}>2 superstar players</strong> and <strong style={{ color: '#fff' }}>2 star players</strong> per team</li>
                     </ul>
@@ -242,10 +266,10 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label style={labelStyle}>Position</label>
-                  <select value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} style={{ ...inputStyle(errors.position), cursor: 'pointer' }}>
+                  <label style={labelStyle}>Position *</label>
+                  <select required value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} style={{ ...inputStyle(errors.position), cursor: 'pointer' }}>
                     {POSITIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                   </select>
                   {errEl(errors.position)}
@@ -258,16 +282,48 @@ export default function RegisterPage() {
                     style={{ ...inputStyle(errors.teamPref), cursor: 'pointer' }}
                   >
                     <option value="">Select your team</option>
-                    {teams.map(t => (
+                    {filteredTeams.map(t => (
                       <option key={t.id} value={t.name}>{t.name}</option>
                     ))}
                   </select>
                   {errEl(errors.teamPref)}
-                  {teams.length === 0 && (
+                  {filteredTeams.length === 0 && (
                     <div style={{ color: '#555', fontSize: '11px', marginTop: '4px' }}>
-                      Registration is not currently open. Check back soon.
+                      No teams available yet for this division. Check back soon.
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>Jersey Number *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="99"
+                    required
+                    value={form.jerseyNumber}
+                    onChange={e => setForm(f => ({ ...f, jerseyNumber: e.target.value }))}
+                    style={inputStyle((errors as any).jerseyNumber)}
+                    placeholder="e.g. 23"
+                  />
+                  {errEl((errors as any).jerseyNumber)}
+                </div>
+                <div>
+                  <label style={labelStyle}>Jersey Size *</label>
+                  <select
+                    value={form.jerseySize}
+                    required
+                    onChange={e => setForm(f => ({ ...f, jerseySize: e.target.value }))}
+                    style={{ ...inputStyle((errors as any).jerseySize), cursor: 'pointer' }}
+                  >
+                    <option value="">Select size</option>
+                    {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  {errEl((errors as any).jerseySize)}
                 </div>
               </div>
             </div>
@@ -291,6 +347,104 @@ export default function RegisterPage() {
                 <span>🔒</span>
                 <span>Payments processed securely by Stripe. Your card details are never stored on our servers.</span>
               </div>
+            </div>
+
+            {/* Waiver */}
+            <div style={{
+              backgroundColor: '#1a1a1a',
+              border: `1px solid ${(errors as any).waiver ? '#e74c3c' : '#2a2a2a'}`,
+              borderRadius: '14px',
+              padding: '28px',
+              marginBottom: '24px',
+            }}>
+              <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '17px', marginBottom: '4px' }}>
+                Liability Waiver, Dress Code &amp; League Rules
+              </h3>
+              <p style={{ color: '#555', fontSize: '12px', marginBottom: '20px' }}>
+                Please read the full agreement below before registering.
+              </p>
+
+              {/* Scrollable waiver text */}
+              <div style={{
+                backgroundColor: '#111',
+                border: '1px solid #2a2a2a',
+                borderRadius: '10px',
+                padding: '20px',
+                maxHeight: '260px',
+                overflowY: 'auto',
+                marginBottom: '20px',
+                lineHeight: 1.8,
+              }}>
+                <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '14px' }}>
+                  I agree that neither my team nor I will make a claim against ICI.
+                </p>
+                <p style={{ color: '#ccc', fontSize: '12px', fontWeight: 700, marginBottom: '14px', letterSpacing: '0.02em' }}>
+                  SPORTS INVOLVE PHYSICAL CONTACT BETWEEN PLAYERS, THAT SERIOUS ACCIDENTS OCCASIONALLY
+                  OCCUR DURING SUCH SPORTING ACTIVITIES, AND THAT PARTICIPANTS IN SUCH SPORTING ACTIVITIES
+                  OCCASIONALLY SUSTAIN SERIOUS PERSONAL INJURIES (INCLUDING DEATH) AND/OR PROPERTY DAMAGE,
+                  AS A CONSEQUENCE THEREOF.
+                </p>
+                <p style={{ color: '#ccc', fontSize: '12px', fontWeight: 700, marginBottom: '14px', letterSpacing: '0.02em' }}>
+                  KNOWING THE RISKS OF PARTICIPATION, NEVERTHELESS, I HEREBY AGREE THAT MY TEAM AND I
+                  ASSUME THOSE RISKS AND RELEASE AND HOLD ICI &amp; IMBA HARMLESS.
+                </p>
+                <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '14px' }}>
+                  I attest that my team is physically fit and has no known medical conditions which
+                  prohibit participation in this sport.
+                </p>
+                <p style={{ color: '#ccc', fontSize: '12px', fontWeight: 700, marginBottom: '14px', letterSpacing: '0.02em' }}>
+                  I HAVE CAREFULLY READ THIS AGREEMENT AND FULLY UNDERSTAND ITS CONTENTS. I AM AWARE
+                  THAT THIS IS A RELEASE OF LIABILITY FOR MYSELF AND MY TEAM AND A CONTRACT BETWEEN
+                  MYSELF, MY TEAM AND THE ORGANIZERS. I HAVE SIGNED IT OF MY OWN FREE WILL.
+                </p>
+                <p style={{ color: '#aaa', fontSize: '13px' }}>
+                  I also agree that league organizers may share my team&apos;s photograph or video with
+                  community members.
+                </p>
+              </div>
+
+              {/* Checkbox */}
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+                <div style={{ position: 'relative', flexShrink: 0, marginTop: '1px' }}>
+                  <input
+                    type="checkbox"
+                    checked={waiverChecked}
+                    onChange={e => {
+                      setWaiverChecked(e.target.checked)
+                      if (e.target.checked) setErrors(prev => { const n = { ...prev }; delete (n as any).waiver; return n })
+                    }}
+                    style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', margin: 0 }}
+                  />
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '5px',
+                    border: `2px solid ${waiverChecked ? '#4A9FE3' : (errors as any).waiver ? '#e74c3c' : '#444'}`,
+                    backgroundColor: waiverChecked ? '#4A9FE3' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s',
+                    pointerEvents: 'none',
+                  }}>
+                    {waiverChecked && (
+                      <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                        <path d="M1 4L4.5 7.5L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span style={{ color: waiverChecked ? '#fff' : '#888', fontSize: '14px', lineHeight: 1.5, transition: 'color 0.15s' }}>
+                  I have read and agree to the Liability Waiver, Dress Code, and League Rules above.
+                  I understand this is a binding agreement.
+                </span>
+              </label>
+
+              {(errors as any).waiver && (
+                <div style={{ color: '#e74c3c', fontSize: '12px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>⚠</span> {(errors as any).waiver}
+                </div>
+              )}
             </div>
 
             <button
@@ -336,7 +490,7 @@ export default function RegisterPage() {
             <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderLeft: '3px solid #F5A623', borderRadius: '10px', padding: '18px' }}>
               <div style={{ color: '#F5A623', fontWeight: 700, fontSize: '12px', marginBottom: '10px', letterSpacing: '0.08em' }}>NOTES</div>
               <ul style={{ color: '#666', fontSize: '13px', lineHeight: '2', paddingLeft: '16px', margin: 0 }}>
-                <li>13+ to participate (17+ for Comp)</li>
+                <li>Must be 16+ to participate</li>
                 <li>No prior league experience required</li>
                 <li>Teams may be vetoed if skill level doesn&apos;t fit</li>
                 <li>Comp: max 2 superstar &amp; 2 star players per team</li>

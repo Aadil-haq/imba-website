@@ -7,6 +7,7 @@ const navItems = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
   { href: '/admin/homepage', label: 'Homepage', icon: '🏠' },
   { href: '/admin/seasons', label: 'Active Seasons', icon: '🗓️' },
+  { href: '/admin/active-teams', label: 'Active Teams', icon: '🏆' },
   { href: '/admin/announcements', label: 'Announcements', icon: '📣' },
   { href: '/admin/games', label: 'Games', icon: '🏀' },
   { href: '/admin/stats', label: 'Enter Stats', icon: '📈' },
