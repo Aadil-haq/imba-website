@@ -7,7 +7,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
+    const { searchParams } = new URL(request.url)
+    const season = searchParams.get('season') || undefined
     const games = await prisma.game.findMany({
+      where: season ? { season } : undefined,
       include: { homeTeam: true, awayTeam: true },
       orderBy: [{ week: 'asc' }, { date: 'asc' }],
     })
