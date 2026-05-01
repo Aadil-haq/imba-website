@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 
 interface Player {
   id: string
@@ -30,6 +30,15 @@ interface Game {
   isHome: boolean
 }
 
+interface SeasonRecord {
+  season: string
+  league: string
+  wins: number
+  losses: number
+  pf: number
+  pa: number
+}
+
 interface TeamDetail {
   id: string
   name: string
@@ -39,22 +48,26 @@ interface TeamDetail {
   losses: number
   pointsFor: number
   pointsAgainst: number
+  seasonRecords: SeasonRecord[]
   players: Player[]
   games: Game[]
 }
 
 export default function TeamPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const slug = params.slug as string
+  const season = searchParams.get('season') || ''
   const [team, setTeam] = useState<TeamDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!slug) return
-    fetch(`/api/teams/${slug}`)
+    const url = season ? `/api/teams/${slug}?season=${encodeURIComponent(season)}` : `/api/teams/${slug}`
+    fetch(url)
       .then(r => r.json())
       .then(data => { setTeam(data); setLoading(false) })
-  }, [slug])
+  }, [slug, season])
 
   if (loading) return (
     <div style={{ backgroundColor: '#111', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -68,10 +81,9 @@ export default function TeamPage() {
     </div>
   )
 
-  const gp = team.wins + team.losses
-  const pct = gp > 0 ? (team.wins / gp).toFixed(3) : '.000'
   const recentGames = team.games.filter(g => g.played).slice(0, 5)
   const upcomingGames = team.games.filter(g => !g.played).slice(0, 3)
+  const mostRecentSeason = team.seasonRecords[0]
 
   return (
     <div style={{ backgroundColor: '#111111', minHeight: '100vh' }}>
@@ -96,34 +108,57 @@ export default function TeamPage() {
               <h1 style={{ color: '#fff', fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 900, marginBottom: '6px' }}>
                 {team.name}
               </h1>
-              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                <span style={{ color: '#27AE60', fontWeight: 800, fontSize: '18px' }}>{team.wins}W</span>
-                <span style={{ color: '#e74c3c', fontWeight: 800, fontSize: '18px' }}>{team.losses}L</span>
-                <span style={{ color: '#888', fontSize: '16px' }}>{pct} PCT</span>
-                <span style={{ color: '#888', fontSize: '16px' }}>Spring 2025</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '20px', marginLeft: 'auto', flexWrap: 'wrap' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: team.color, fontWeight: 900, fontSize: '24px' }}>{team.pointsFor}</div>
-                <div style={{ color: '#555', fontSize: '12px', fontWeight: 700 }}>PF</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#888', fontWeight: 900, fontSize: '24px' }}>{team.pointsAgainst}</div>
-                <div style={{ color: '#555', fontSize: '12px', fontWeight: 700 }}>PA</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: (team.pointsFor - team.pointsAgainst) >= 0 ? '#27AE60' : '#e74c3c', fontWeight: 900, fontSize: '24px' }}>
-                  {(team.pointsFor - team.pointsAgainst) > 0 ? '+' : ''}{team.pointsFor - team.pointsAgainst}
+              {mostRecentSeason && (
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ color: '#555', fontSize: '13px' }}>{mostRecentSeason.season} · {mostRecentSeason.league}</span>
+                  <span style={{ color: '#27AE60', fontWeight: 800, fontSize: '18px' }}>{mostRecentSeason.wins}W</span>
+                  <span style={{ color: '#e74c3c', fontWeight: 800, fontSize: '18px' }}>{mostRecentSeason.losses}L</span>
                 </div>
-                <div style={{ color: '#555', fontSize: '12px', fontWeight: 700 }}>DIFF</div>
-              </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        {/* Season History */}
+        {team.seasonRecords.length > 0 && (
+          <div style={{ marginBottom: '40px' }}>
+            <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 800, marginBottom: '16px' }}>Season History</h2>
+            <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '12px', overflow: 'hidden', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '400px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#111', borderBottom: `2px solid ${team.color}` }}>
+                    {['Season', 'League', 'W', 'L', 'PCT', 'PF', 'PA', 'DIFF'].map(h => (
+                      <th key={h} style={{ padding: '12px 14px', textAlign: h === 'Season' || h === 'League' ? 'left' : 'center', color: '#888', fontWeight: 700, fontSize: '12px' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {team.seasonRecords.map((s, i) => {
+                    const gp = s.wins + s.losses
+                    const pct = gp > 0 ? (s.wins / gp).toFixed(3) : '.000'
+                    const diff = s.pf - s.pa
+                    return (
+                      <tr key={`${s.season}-${s.league}`} style={{ backgroundColor: i % 2 === 0 ? '#1a1a1a' : '#141414', borderBottom: '1px solid #222' }}>
+                        <td style={{ padding: '12px 14px', color: '#fff', fontWeight: 600, fontSize: '14px' }}>{s.season}</td>
+                        <td style={{ padding: '12px 14px', color: '#888', fontSize: '13px' }}>{s.league}</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center', color: '#27AE60', fontWeight: 700, fontSize: '14px' }}>{s.wins}</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center', color: '#e74c3c', fontWeight: 700, fontSize: '14px' }}>{s.losses}</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center', color: '#4A9FE3', fontWeight: 700, fontSize: '13px' }}>{pct}</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{s.pf}</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{s.pa}</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center', color: diff >= 0 ? '#27AE60' : '#e74c3c', fontWeight: 700, fontSize: '13px' }}>{diff > 0 ? '+' : ''}{diff}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
           {/* Roster */}
           <div style={{ gridColumn: 'span 2' }}>

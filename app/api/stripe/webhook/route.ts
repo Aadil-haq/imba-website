@@ -28,13 +28,32 @@ export async function POST(request: Request) {
       const registrationId = session.metadata?.registrationId
 
       if (registrationId) {
-        await prisma.registration.update({
+        const reg = await prisma.registration.update({
           where: { id: registrationId },
-          data: {
-            paymentStatus: 'paid',
-            stripeSession: session.id,
-          },
+          data: { paymentStatus: 'paid', stripeSession: session.id },
         })
+
+        // Auto-add player to team roster if they selected a team
+        if (reg.teamPref) {
+          const team = await prisma.team.findFirst({
+            where: { name: reg.teamPref },
+            orderBy: { createdAt: 'desc' },
+          })
+          if (team) {
+            const fullName = `${reg.firstName} ${reg.lastName}`
+            const exists = await prisma.player.findFirst({ where: { name: fullName, teamId: team.id } })
+            if (!exists) {
+              await prisma.player.create({
+                data: {
+                  name: fullName,
+                  number: parseInt(reg.jerseyNumber || '0') || 0,
+                  position: reg.position || 'G',
+                  teamId: team.id,
+                },
+              })
+            }
+          }
+        }
       }
     }
 
