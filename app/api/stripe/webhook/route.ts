@@ -1,6 +1,32 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+async function addPlayerFromRegistration(reg: {
+  firstName: string; lastName: string; teamPref: string | null
+  jerseyNumber: string | null; position: string
+}) {
+  if (!reg.teamPref) return
+  const team = await prisma.team.findFirst({
+    where: { name: reg.teamPref.trim() },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (!team) { console.error('No team found for teamPref:', reg.teamPref); return }
+  const fullName = `${reg.firstName.trim()} ${reg.lastName.trim()}`
+  const exists = await prisma.player.findFirst({ where: { name: fullName, teamId: team.id } })
+  if (!exists) {
+    await prisma.player.create({
+      data: {
+        name: fullName,
+        number: parseInt(reg.jerseyNumber || '0') || 0,
+        position: reg.position || 'G',
+        isSub: false,
+        teamId: team.id,
+      },
+    })
+    console.log('Auto-rostered:', fullName, '->', team.name)
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const stripeKey = process.env.STRIPE_SECRET_KEY
@@ -33,26 +59,11 @@ export async function POST(request: Request) {
           data: { paymentStatus: 'paid', stripeSession: session.id },
         })
 
-        // Auto-add player to team roster if they selected a team
-        if (reg.teamPref) {
-          const team = await prisma.team.findFirst({
-            where: { name: reg.teamPref },
-            orderBy: { createdAt: 'desc' },
-          })
-          if (team) {
-            const fullName = `${reg.firstName} ${reg.lastName}`
-            const exists = await prisma.player.findFirst({ where: { name: fullName, teamId: team.id } })
-            if (!exists) {
-              await prisma.player.create({
-                data: {
-                  name: fullName,
-                  number: parseInt(reg.jerseyNumber || '0') || 0,
-                  position: reg.position || 'G',
-                  teamId: team.id,
-                },
-              })
-            }
-          }
+        // Auto-add player to team roster — isolated so a failure never blocks payment confirmation
+        try {
+          await addPlayerFromRegistration(reg)
+        } catch (err) {
+          console.error('Auto-roster error for registration', registrationId, err)
         }
       }
     }
