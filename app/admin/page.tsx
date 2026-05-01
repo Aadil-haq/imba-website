@@ -40,7 +40,7 @@ export default async function AdminDashboard() {
         )}
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ color: '#ffffff', fontSize: '28px', fontWeight: 900 }}>Dashboard</h1>
-          <p style={{ color: '#555', fontSize: '14px' }}>IMBA Spring 2025 Overview</p>
+          <p style={{ color: '#555', fontSize: '14px' }}>IMBA Summer 2026 Overview</p>
         </div>
 
         {/* Stat Cards */}
