@@ -102,6 +102,7 @@ model Registration {
   paymentStatus String   @default("pending")
   stripeSession String?
   amount        Int      @default(8000)
+  discountCode  String?
   season        String   @default("Spring 2025")
   createdAt     DateTime @default(now())
 }
