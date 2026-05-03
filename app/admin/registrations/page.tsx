@@ -99,7 +99,10 @@ export default function AdminRegistrationsPage() {
     URL.revokeObjectURL(url)
   }
 
-  const filtered = filter === 'all' ? regs : regs.filter(r => r.paymentStatus === filter)
+  const discountRegs = regs.filter(r => r.discountCode != null || (r.paymentStatus === 'paid' && r.amount < 8000))
+  const filtered = filter === 'all' ? regs
+    : filter === 'discount' ? discountRegs
+    : regs.filter(r => r.paymentStatus === filter)
   const totalRevenue = regs.filter(r => r.paymentStatus === 'paid').reduce((sum, r) => sum + r.amount, 0)
   const paidRegs = regs.filter(r => r.paymentStatus === 'paid')
 
@@ -226,17 +229,22 @@ export default function AdminRegistrationsPage() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-              {['all', 'pending', 'paid'].map(f => (
-                <button key={f} onClick={() => setFilter(f)} style={{
-                  padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                  backgroundColor: filter === f ? '#4A9FE3' : '#1a1a1a',
-                  color: filter === f ? '#fff' : '#888',
-                  fontWeight: 600, fontSize: '13px',
-                  borderBottom: filter !== f ? '1px solid #2a2a2a' : 'none',
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              {[
+                { key: 'all', label: 'All', count: regs.length, activeColor: '#4A9FE3' },
+                { key: 'pending', label: 'Pending', count: regs.filter(r => r.paymentStatus === 'pending').length, activeColor: '#F5A623' },
+                { key: 'paid', label: 'Paid', count: regs.filter(r => r.paymentStatus === 'paid').length, activeColor: '#27AE60' },
+                { key: 'discount', label: '🏷 Discount', count: discountRegs.length, activeColor: '#a855f7' },
+              ].map(({ key, label, count, activeColor }) => (
+                <button key={key} onClick={() => setFilter(key)} style={{
+                  padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 700, fontSize: '13px',
+                  backgroundColor: filter === key ? activeColor : '#1a1a1a',
+                  color: filter === key ? '#fff' : '#666',
+                  border: `1px solid ${filter === key ? activeColor : '#2a2a2a'}`,
+                  transition: 'all 0.15s',
                 }}>
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                  {f !== 'all' && <span style={{ marginLeft: '6px', fontSize: '11px', opacity: 0.7 }}>({regs.filter(r => r.paymentStatus === f).length})</span>}
+                  {label}
+                  <span style={{ marginLeft: '6px', fontSize: '11px', opacity: 0.8 }}>({count})</span>
                 </button>
               ))}
             </div>
@@ -276,31 +284,41 @@ export default function AdminRegistrationsPage() {
                         {reg.jerseySize && <div style={{ color: '#4A9FE3', fontSize: '11px', fontWeight: 700 }}>{reg.jerseySize}</div>}
                       </td>
                       <td style={{ padding: '12px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ color: reg.amount < 8000 ? '#27AE60' : '#ccc', fontSize: '13px', fontWeight: 700 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ color: reg.amount < 8000 ? '#27AE60' : '#ccc', fontSize: '14px', fontWeight: 700 }}>
                             ${(reg.amount / 100).toFixed(2)}
                           </span>
                           {reg.amount === 0 && (
-                            <span style={{ backgroundColor: '#1a4731', color: '#27AE60', border: '1px solid #27AE60', borderRadius: '3px', padding: '1px 5px', fontSize: '10px', fontWeight: 700 }}>FREE</span>
+                            <span style={{ backgroundColor: '#1a4731', color: '#27AE60', border: '1px solid #27AE60', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>FREE</span>
                           )}
                           {reg.amount > 0 && reg.amount < 8000 && (
-                            <span style={{ backgroundColor: '#2a1a00', color: '#F5A623', border: '1px solid #F5A623', borderRadius: '3px', padding: '1px 5px', fontSize: '10px', fontWeight: 700 }}>
+                            <span style={{ backgroundColor: '#2a1500', color: '#F5A623', border: '1px solid #F5A623', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 800 }}>
                               {Math.round((1 - reg.amount / 8000) * 100)}% OFF
                             </span>
                           )}
                         </div>
-                        {reg.discountCode && (
-                          <div style={{ color: '#F5A623', fontSize: '10px', fontWeight: 700, marginTop: '2px' }}>🏷 {reg.discountCode}</div>
+                        {(reg.discountCode || reg.amount < 8000) && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                            <span style={{ backgroundColor: '#1e0a3c', color: '#a855f7', border: '1px solid #a855f7', borderRadius: '4px', padding: '2px 7px', fontSize: '10px', fontWeight: 800, letterSpacing: '0.04em' }}>
+                              🏷 {reg.discountCode ?? 'DISCOUNT'}
+                            </span>
+                          </div>
                         )}
-                        <div style={{ color: '#555', fontSize: '11px' }}>{reg.paymentMethod}</div>
+                        <div style={{ color: '#444', fontSize: '11px', marginTop: '3px' }}>{reg.paymentMethod}</div>
                       </td>
                       <td style={{ padding: '12px 14px' }}>
                         <span style={{
-                          padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
-                          backgroundColor: reg.paymentStatus === 'paid' ? '#1a4731' : '#3a2a00',
-                          color: reg.paymentStatus === 'paid' ? '#27AE60' : '#F5A623',
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 800,
+                          backgroundColor: reg.paymentStatus === 'paid' ? '#0d2b1a' : '#2a1e00',
+                          color: reg.paymentStatus === 'paid' ? '#2ecc71' : '#F5A623',
+                          border: `1px solid ${reg.paymentStatus === 'paid' ? '#2ecc71' : '#F5A623'}`,
+                          letterSpacing: '0.06em',
                         }}>
-                          {reg.paymentStatus === 'paid' ? '✓ PAID' : '⏳ PENDING'}
+                          {reg.paymentStatus === 'paid'
+                            ? <><span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#2ecc71', display: 'inline-block' }} />PAID</>
+                            : <><span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#F5A623', display: 'inline-block' }} />PENDING</>
+                          }
                         </span>
                       </td>
                       <td style={{ padding: '12px 14px', color: '#555', fontSize: '12px' }}>
