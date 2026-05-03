@@ -19,6 +19,7 @@ export default function AdminRegistrationsPage() {
   const [view, setView] = useState<'registrations' | 'jerseys'>('registrations')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [rerostering, setRerostering] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   const load = async () => {
     const data = await fetch('/api/admin/registrations').then(r => r.json())
@@ -59,6 +60,22 @@ export default function AdminRegistrationsPage() {
     if (res.ok) { showMsg('Registration removed'); load() }
     else showMsg('Failed to remove', 'error')
     setDeletingId(null)
+  }
+
+  const syncFromStripe = async () => {
+    setSyncing(true)
+    const res = await fetch('/api/admin/stripe-backfill', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer imba-admin-2025' },
+    })
+    const data = await res.json()
+    setSyncing(false)
+    if (data.ok) {
+      showMsg(`✓ Synced — ${data.updated} records updated from Stripe`)
+      load()
+    } else {
+      showMsg(data.error || 'Sync failed', 'error')
+    }
   }
 
   const reRosterAll = async () => {
@@ -115,6 +132,13 @@ export default function AdminRegistrationsPage() {
             <p style={{ color: '#555', fontSize: '14px' }}>Manage player registrations · Only mark paid after payment is confirmed</p>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={syncFromStripe}
+              disabled={syncing}
+              style={{ backgroundColor: syncing ? '#2a2a2a' : '#1a1a3a', color: syncing ? '#555' : '#a855f7', border: '1px solid #a855f7', borderRadius: '8px', padding: '10px 18px', fontWeight: 700, fontSize: '13px', cursor: syncing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+            >
+              {syncing ? '⏳ Syncing...' : '⚡ Sync from Stripe'}
+            </button>
             <button
               onClick={reRosterAll}
               disabled={rerostering}
