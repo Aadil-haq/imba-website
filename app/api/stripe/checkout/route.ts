@@ -27,7 +27,6 @@ export async function POST(request: Request) {
             product_data: {
               name: `IMBA ${league} Registration`,
               description: `${body.firstName} ${body.lastName} · ${body.position}`,
-              images: [`${siteUrl}/logo.png`],
             },
             unit_amount: 8000, // $80.00
           },
@@ -35,6 +34,7 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'payment',
+      allow_promotion_codes: true,
       success_url: `${siteUrl}/register/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/register?cancelled=true`,
       customer_email: body.email,

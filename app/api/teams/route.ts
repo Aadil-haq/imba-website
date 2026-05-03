@@ -168,3 +168,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create team' }, { status: 500 })
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+    const playerCount = await prisma.player.count({ where: { teamId: id } })
+    if (playerCount > 0) {
+      return NextResponse.json({ error: `Cannot delete team with ${playerCount} players` }, { status: 409 })
+    }
+
+    await prisma.team.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Teams DELETE error:', error)
+    return NextResponse.json({ error: 'Failed to delete team' }, { status: 500 })
+  }
+}

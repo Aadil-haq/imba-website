@@ -44,6 +44,29 @@ body {
   text-align: left;
 }
 
+/* Sortable stats table headers */
+.sort-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s;
+}
+.sort-th:hover {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+.sort-th button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
 .imba-table tr:nth-child(even) td {
   background: #1a1a1a;
 }

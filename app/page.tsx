@@ -101,14 +101,15 @@ export default async function HomePage() {
             const homeWon = played && game.homeScore !== null && game.awayScore !== null && game.homeScore! > game.awayScore!
             const awayWon = played && game.homeScore !== null && game.awayScore !== null && game.awayScore! > game.homeScore!
             return (
-              <div key={game.id} style={{
+              <Link key={game.id} href={`/games/${game.id}`} style={{ textDecoration: 'none' }}>
+              <div style={{
                 borderRight: '1px solid #1a1a1a',
                 padding: '10px 16px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '4px',
                 minWidth: '160px',
-                backgroundColor: i === 0 ? 'transparent' : 'transparent',
+                cursor: 'pointer',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -138,6 +139,7 @@ export default async function HomePage() {
                   {played ? 'FINAL' : new Date(game.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
               </div>
+              </Link>
             )
           })}
           <Link href="/schedule" style={{ display: 'flex', alignItems: 'center', padding: '0 20px', color: '#4A9FE3', fontSize: '11px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', letterSpacing: '0.05em' }}>
@@ -163,10 +165,7 @@ export default async function HomePage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
                 <img src="/logo.png" alt="IMBA" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
-                <div>
-                  <div style={{ color: '#4A9FE3', fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase' }}>Irving Masjid</div>
-                  <div style={{ color: '#fff', fontSize: '22px', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>Basketball Association</div>
-                </div>
+                <div style={{ color: '#fff', fontSize: '22px', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>IMBA</div>
               </div>
 
               <h1 style={{ color: '#fff', fontSize: 'clamp(32px, 6vw, 64px)', fontWeight: 900, lineHeight: 1.0, letterSpacing: '-0.03em', marginBottom: '16px' }}>
@@ -263,7 +262,7 @@ export default async function HomePage() {
                 const homeWon = game.homeScore !== null && game.awayScore !== null && game.homeScore! > game.awayScore!
                 const awayWon = game.homeScore !== null && game.awayScore !== null && game.awayScore! > game.homeScore!
                 return (
-                  <Link key={game.id} href="/schedule" style={{ textDecoration: 'none' }}>
+                  <Link key={game.id} href={`/games/${game.id}`} style={{ textDecoration: 'none' }}>
                     <div style={{
                       backgroundColor: '#141414', border: '1px solid #1e1e1e', borderRadius: '10px',
                       padding: '14px 16px',

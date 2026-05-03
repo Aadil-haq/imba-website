@@ -7,6 +7,45 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
+    const { searchParams } = new URL(request.url)
+    const season = searchParams.get('season')
+
+    if (season) {
+      // Get the team IDs assigned to this season via season_teams SiteSetting
+      const stSetting = await prisma.siteSetting.findUnique({ where: { key: 'season_teams' } })
+      const seasonTeamsMap: Record<string, string[]> = stSetting ? JSON.parse(stSetting.value) : {}
+      const seasonTeamIds = seasonTeamsMap[season] ?? []
+
+      // 1. Players who have stats in games for this season (historical seasons)
+      const statRows = await prisma.playerGameStat.findMany({
+        where: { game: { season }, player: { isSub: false } },
+        select: { playerId: true },
+        distinct: ['playerId'],
+      })
+      const statPlayerIds = new Set(statRows.map(r => r.playerId))
+
+      // 2. Players currently on a team that is assigned to this season
+      //    (covers new seasons with no games yet)
+      const rosterPlayers = seasonTeamIds.length > 0
+        ? await prisma.player.findMany({
+            where: { teamId: { in: seasonTeamIds }, isSub: false },
+            select: { id: true },
+          })
+        : []
+      const rosterIds = new Set(rosterPlayers.map(p => p.id))
+
+      const allPlayerIds = [...new Set([...statPlayerIds, ...rosterIds])]
+
+      if (allPlayerIds.length === 0) return NextResponse.json([])
+
+      const players = await prisma.player.findMany({
+        where: { id: { in: allPlayerIds } },
+        include: { team: true },
+        orderBy: [{ team: { name: 'asc' } }, { number: 'asc' }],
+      })
+      return NextResponse.json(players)
+    }
+
     const players = await prisma.player.findMany({
       include: { team: true },
       orderBy: [{ team: { name: 'asc' } }, { number: 'asc' }],
@@ -25,7 +64,6 @@ export async function POST(request: Request) {
     const body = await request.json()
     const isSub = body.isSub === true
 
-    // For subs: find-or-create so the same sub name doesn't create duplicates
     if (isSub) {
       let player = await prisma.player.findFirst({
         where: { name: body.name.trim(), teamId: body.teamId, isSub: true },
@@ -33,13 +71,7 @@ export async function POST(request: Request) {
       })
       if (!player) {
         player = await prisma.player.create({
-          data: {
-            name: body.name.trim(),
-            number: 0,
-            position: 'G',
-            isSub: true,
-            teamId: body.teamId,
-          },
+          data: { name: body.name.trim(), number: 0, position: 'G', isSub: true, teamId: body.teamId },
           include: { team: true },
         })
       }
@@ -53,6 +85,7 @@ export async function POST(request: Request) {
         position: body.position || 'G',
         isSub: false,
         teamId: body.teamId,
+        ...(body.season ? { season: body.season } : {}),
       },
       include: { team: true },
     })
@@ -69,7 +102,7 @@ export async function PATCH(request: Request) {
   }
   try {
     const body = await request.json()
-    const { id, name, number, position, teamId } = body
+    const { id, name, number, position, teamId, season } = body
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     const player = await prisma.player.update({
       where: { id },
@@ -78,6 +111,7 @@ export async function PATCH(request: Request) {
         ...(number !== undefined && { number: parseInt(number) || 0 }),
         ...(position !== undefined && { position }),
         ...(teamId !== undefined && { teamId }),
+        ...(season !== undefined && { season }),
       },
       include: { team: true },
     })

@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 interface Standing {
   teamId: string
   teamName: string
   teamSlug: string
   teamColor: string
+  teamLogo?: string | null
   league: string
   wins: number
   losses: number
@@ -35,6 +37,17 @@ const selectStyle: React.CSSProperties = {
 }
 
 export default function StandingsPage() {
+  return (
+    <Suspense fallback={<div style={{ backgroundColor: '#111111', minHeight: '100vh' }} />}>
+      <StandingsPageContent />
+    </Suspense>
+  )
+}
+
+function StandingsPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [standings, setStandings] = useState<Standing[]>([])
   const [playoffTeamIds, setPlayoffTeamIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,26 +56,30 @@ export default function StandingsPage() {
   const [selectedSeason, setSelectedSeason] = useState<string>('')
   const [selectedLeague, setSelectedLeague] = useState<string>('all')
 
-  // Load available seasons on mount
   useEffect(() => {
     fetch('/api/seasons')
       .then(r => r.json())
       .then((data: SeasonOption[]) => {
         setSeasonOptions(data)
-        // Default to most recent season
-        if (data.length > 0) setSelectedSeason(data[0].season)
+        const urlSeason = searchParams.get('season')
+        const urlLeague = searchParams.get('league') || 'all'
+        const match = urlSeason && data.find(s => s.season === urlSeason)
+        setSelectedLeague(urlLeague)
+        setSelectedSeason(match ? urlSeason : (data[0]?.season ?? ''))
         setSeasonsLoading(false)
       })
       .catch(() => setSeasonsLoading(false))
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load standings when season/league changes
   useEffect(() => {
-    if (!selectedSeason) return  // wait until we have a season
+    if (!selectedSeason) return
     setLoading(true)
 
     const params = new URLSearchParams({ season: selectedSeason })
     if (selectedLeague !== 'all') params.set('league', selectedLeague)
+
+    const singlePlayoffSeasons = new Set(['D1 2023-24 Winter'])
+    if (singlePlayoffSeasons.has(selectedSeason)) params.set('playoffCount', '1')
 
     fetch(`/api/standings?${params}`)
       .then(r => r.json())
@@ -74,26 +91,35 @@ export default function StandingsPage() {
       .catch(() => { setStandings([]); setPlayoffTeamIds([]); setLoading(false) })
   }, [selectedSeason, selectedLeague])
 
-  // Unique leagues
-  const leagues = [...new Set(seasonOptions.map(s => s.league))]
+  const updateUrl = (season: string, league: string) => {
+    const p = new URLSearchParams()
+    if (season) p.set('season', season)
+    if (league !== 'all') p.set('league', league)
+    router.replace(`/standings${p.toString() ? '?' + p : ''}`, { scroll: false })
+  }
 
-  // Seasons filtered by selected league
+  const handleLeagueChange = (league: string) => {
+    const matching = league === 'all' ? seasonOptions : seasonOptions.filter(s => s.league === league)
+    const newSeason = matching[0]?.season ?? selectedSeason
+    setSelectedLeague(league)
+    setSelectedSeason(newSeason)
+    updateUrl(newSeason, league)
+  }
+
+  const handleSeasonChange = (season: string) => {
+    setSelectedSeason(season)
+    updateUrl(season, selectedLeague)
+  }
+
+  const leagues = [...new Set(seasonOptions.map(s => s.league))]
   const filteredSeasons = selectedLeague === 'all'
     ? seasonOptions
     : seasonOptions.filter(s => s.league === selectedLeague)
-
-  // When league changes, reset to first matching season
-  const handleLeagueChange = (league: string) => {
-    setSelectedLeague(league)
-    const matching = league === 'all' ? seasonOptions : seasonOptions.filter(s => s.league === league)
-    if (matching.length > 0) setSelectedSeason(matching[0].season)
-  }
 
   const currentLabel = selectedSeason || 'Select a Season'
 
   return (
     <div style={{ backgroundColor: '#111111', minHeight: '100vh' }}>
-      {/* Header */}
       <div style={{ backgroundColor: '#0d0d0d', borderBottom: '1px solid #2a2a2a', padding: '24px 0' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px' }}>
@@ -105,8 +131,6 @@ export default function StandingsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Season / League Filters */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
             <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>League</label>
@@ -119,7 +143,7 @@ export default function StandingsPage() {
           </div>
           <div>
             <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Season</label>
-            <select value={selectedSeason} onChange={e => setSelectedSeason(e.target.value)} style={selectStyle}>
+            <select value={selectedSeason} onChange={e => handleSeasonChange(e.target.value)} style={selectStyle}>
               {filteredSeasons.map(s => (
                 <option key={`${s.season}-${s.league}`} value={s.season}>{s.season}</option>
               ))}
@@ -135,7 +159,6 @@ export default function StandingsPage() {
           </div>
         ) : (() => {
           const playoffSet = new Set(playoffTeamIds)
-          // Last index (0-based) that made playoffs determines the cutoff row
           const playoffCutoff = playoffTeamIds.length > 0
             ? standings.reduce((last, t, i) => playoffSet.has(t.teamId) ? i : last, -1) + 1
             : standings.length
@@ -154,16 +177,11 @@ export default function StandingsPage() {
                 <thead>
                   <tr style={{ backgroundColor: '#4A9FE3' }}>
                     {[
-                      { label: 'Rank',   align: 'left' },
-                      { label: 'Team',   align: 'left' },
-                      { label: 'GP',     align: 'center' },
-                      { label: 'W',      align: 'center' },
-                      { label: 'L',      align: 'center' },
-                      { label: 'PCT',    align: 'center' },
-                      { label: 'PF',     align: 'center' },
-                      { label: 'PA',     align: 'center' },
-                      { label: 'DIFF',   align: 'center' },
-                      { label: 'STREAK', align: 'center' },
+                      { label: 'Rank', align: 'left' }, { label: 'Team', align: 'left' },
+                      { label: 'GP', align: 'center' }, { label: 'W', align: 'center' },
+                      { label: 'L', align: 'center' }, { label: 'PCT', align: 'center' },
+                      { label: 'PF', align: 'center' }, { label: 'PA', align: 'center' },
+                      { label: 'DIFF', align: 'center' }, { label: 'STREAK', align: 'center' },
                     ].map(h => (
                       <th key={h.label} style={{ padding: '14px 16px', textAlign: h.align as 'left' | 'center', color: '#fff', fontWeight: 700, fontSize: '12px', letterSpacing: '0.05em' }}>
                         {h.label}
@@ -186,8 +204,11 @@ export default function StandingsPage() {
                         #{i + 1}
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        <Link href={`/teams/${team.teamSlug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{ width: '12px', height: '12px', backgroundColor: team.teamColor, borderRadius: '50%', flexShrink: 0 }} />
+                        <Link href={`/teams/${team.teamSlug}?season=${encodeURIComponent(selectedSeason)}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {team.teamLogo
+                            ? <img src={team.teamLogo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', borderRadius: '3px', flexShrink: 0 }} />
+                            : <div style={{ width: '12px', height: '12px', backgroundColor: team.teamColor, borderRadius: '50%', flexShrink: 0 }} />
+                          }
                           <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>{team.teamName}</span>
                           {madePlayoffs && (
                             <span style={{ backgroundColor: '#1a3a5c', color: '#4A9FE3', fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', marginLeft: '4px' }}>
@@ -207,10 +228,7 @@ export default function StandingsPage() {
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                         <span style={{
-                          padding: '3px 10px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: 700,
+                          padding: '3px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 700,
                           backgroundColor: team.streak.startsWith('W') ? '#1a4731' : team.streak.startsWith('L') ? '#4a1919' : '#2a2a2a',
                           color: team.streak.startsWith('W') ? '#27AE60' : team.streak.startsWith('L') ? '#e74c3c' : '#888',
                         }}>

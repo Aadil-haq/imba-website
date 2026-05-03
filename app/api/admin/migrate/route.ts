@@ -11,8 +11,21 @@ export async function POST(request: Request) {
     try { await prisma.$executeRawUnsafe(`ALTER TABLE "Team" ADD COLUMN "logo" TEXT`); results.push('logo added') } catch (e: any) { results.push(e.message) }
     try { await prisma.$executeRawUnsafe(`ALTER TABLE "Team" ADD COLUMN "active" INTEGER NOT NULL DEFAULT 0`); results.push('active added') } catch (e: any) { results.push(e.message) }
     try { await prisma.$executeRawUnsafe(`ALTER TABLE "Game" ADD COLUMN "forfeit" INTEGER NOT NULL DEFAULT 0`); results.push('forfeit added') } catch (e: any) { results.push(e.message) }
+    try { await prisma.$executeRawUnsafe(`ALTER TABLE "Game" ADD COLUMN "driveUrl" TEXT`); results.push('driveUrl added') } catch (e: any) { results.push(e.message) }
     try { await prisma.$executeRawUnsafe(`ALTER TABLE "Registration" ADD COLUMN "jerseyNumber" TEXT`); results.push('jerseyNumber added') } catch (e: any) { results.push(e.message) }
     try { await prisma.$executeRawUnsafe(`ALTER TABLE "Registration" ADD COLUMN "jerseySize" TEXT`); results.push('jerseySize added') } catch (e: any) { results.push(e.message) }
+
+    // ── Season column on Player ─────────────────────────────────────────────
+    try { await prisma.$executeRawUnsafe(`ALTER TABLE "Player" ADD COLUMN "season" TEXT`); results.push('Player.season added') } catch (e: any) { results.push(e.message) }
+
+    // ── Discount code on Registration ───────────────────────────────────────
+    try { await prisma.$executeRawUnsafe(`ALTER TABLE "Registration" ADD COLUMN "discountCode" TEXT`); results.push('Registration.discountCode added') } catch (e: any) { results.push(e.message) }
+
+    // ── Fix registration seasons ────────────────────────────────────────────
+    try {
+      const rows = await prisma.$executeRawUnsafe(`UPDATE "Registration" SET "season" = 'Summer 2026' WHERE "season" = 'Spring 2025'`)
+      results.push(`Registration seasons updated: ${rows} rows`)
+    } catch (e: any) { results.push('Registration season fix: ' + e.message) }
 
     // ── Fix AWA stats in D2 2025 Summer ────────────────────────────────────
     try {

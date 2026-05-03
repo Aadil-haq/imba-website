@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         date: new Date(body.date),
         time: body.time || '7:00 PM',
         location: body.location || 'Irving Masjid Gym',
-        week: body.week || 1,
+        week: parseInt(body.week, 10) || 1,
         season: body.season || 'Spring 2025',
         league: body.league || 'Rec League',
         played: body.played ?? false,

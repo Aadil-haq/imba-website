@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     })
     const playerMap = new Map(players.map((p) => [p.id, p]))
 
-    const leaders = stats
+    const allLeaders = stats
       .filter(stat => stat._count.gameId >= minGames)
       .map((stat) => {
         const player = playerMap.get(stat.playerId)
@@ -82,13 +82,25 @@ export async function GET(request: Request) {
           threePct: threeAtt > 0 ? (threeMade / threeAtt * 100).toFixed(1) : '—',
           ftPct: ftAtt > 0 ? (ftMade / ftAtt * 100).toFixed(1) : '—',
         }
-      }).filter(Boolean)
+      }).filter((x): x is NonNullable<typeof x> => x !== null)
 
     const sortKey: Record<string, string> = {
       points: 'ppg', rebounds: 'rpg', assists: 'apg', steals: 'spg', blocks: 'bpg',
+      fg: 'fgPct', threePct: 'threePct', ftPct: 'ftPct',
     }
     const key = sortKey[category] || 'ppg'
-    leaders.sort((a, b) => parseFloat((b as any)[key]) - parseFloat((a as any)[key]))
+
+    // For percentage categories, apply minimum attempts per game filter
+    let leaders = allLeaders
+    if (category === 'fg')       leaders = leaders.filter(l => l.fgAtt    >= l.gamesPlayed * 2)
+    if (category === 'threePct') leaders = leaders.filter(l => l.threeAtt >= l.gamesPlayed * 1)
+    if (category === 'ftPct')    leaders = leaders.filter(l => l.ftAtt    >= l.gamesPlayed * 1)
+
+    leaders.sort((a, b) => {
+      const av = parseFloat((a as any)[key]) || 0
+      const bv = parseFloat((b as any)[key]) || 0
+      return bv - av
+    })
 
     return NextResponse.json(leaders.slice(0, limit))
   } catch (error) {

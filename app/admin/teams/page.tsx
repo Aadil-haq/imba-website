@@ -8,6 +8,7 @@ interface Player { id: string; name: string; number: number; position: string; t
 interface SeasonRow { season: string; league: string; active: boolean }
 interface EditingPlayer { id: string; name: string; number: string; position: string; teamId: string }
 interface NewPlayer { name: string; number: string; position: string; teamId: string }
+interface EditingTeam { id: string; name: string; color: string }
 
 const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F']
 
@@ -44,6 +45,10 @@ export default function AdminTeamsPage() {
   const [showCreateTeam, setShowCreateTeam] = useState(false)
   const [newTeam, setNewTeam] = useState({ name: '', league: 'Comp', color: '#4A9FE3' })
   const [creatingTeam, setCreatingTeam] = useState(false)
+
+  // Edit team modal
+  const [editingTeam, setEditingTeam] = useState<EditingTeam | null>(null)
+  const [editTeamSaving, setEditTeamSaving] = useState(false)
 
   const showMsg = (text: string, type: 'ok' | 'err' = 'ok') => {
     setMsg(text); setMsgType(type)
@@ -104,21 +109,15 @@ export default function AdminTeamsPage() {
       .catch(() => {})
   }, [])
 
-  // Load teams for selected season from games
+  // Load teams for selected season from season_teams SiteSetting (not games)
   const loadTeamsForSeason = useCallback(async (season: string) => {
     if (!season) return
     setLoadingTeams(true)
     try {
-      const games = await fetch(`/api/games?season=${encodeURIComponent(season)}`).then(r => r.json())
-      if (!Array.isArray(games)) { setTeamsInSeason([]); setLoadingTeams(false); return }
-
-      // Deduplicate teams by id
-      const teamMap = new Map<string, Team>()
-      for (const g of games) {
-        if (g.homeTeam) teamMap.set(g.homeTeam.id, g.homeTeam)
-        if (g.awayTeam) teamMap.set(g.awayTeam.id, g.awayTeam)
-      }
-      setTeamsInSeason(Array.from(teamMap.values()).sort((a, b) => a.name.localeCompare(b.name)))
+      const res = await fetch(`/api/admin/season-teams?season=${encodeURIComponent(season)}`, { headers: { Authorization: 'Bearer imba-admin-2025' } })
+      const data = await res.json()
+      const active: Team[] = Array.isArray(data.active) ? data.active : []
+      setTeamsInSeason(active.sort((a, b) => a.name.localeCompare(b.name)))
     } catch { setTeamsInSeason([]) }
     setLoadingTeams(false)
     setLoading(false)
@@ -132,6 +131,25 @@ export default function AdminTeamsPage() {
     fetch(`/api/admin/players?season=${encodeURIComponent(selectedSeason)}`, { headers: { Authorization: 'Bearer imba-admin-2025' } })
       .then(r => r.json())
       .then(data => setPlayers(Array.isArray(data) ? data : []))
+
+  const saveEditTeam = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTeam) return
+    setEditTeamSaving(true)
+    const res = await fetch('/api/teams', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingTeam.id, name: editingTeam.name.trim(), color: editingTeam.color }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setTeamsInSeason(prev => prev.map(t => t.id === updated.id ? { ...t, name: updated.name, color: updated.color } : t))
+      setAllTeams(prev => prev.map(t => t.id === updated.id ? { ...t, name: updated.name, color: updated.color } : t))
+      showMsg('Team updated!')
+      setEditingTeam(null)
+    } else showMsg('Error updating team', 'err')
+    setEditTeamSaving(false)
+  }
 
   const uploadLogo = async (teamId: string, file: File) => {
     setUploadingLogo(teamId)
@@ -153,7 +171,7 @@ export default function AdminTeamsPage() {
     const res = await fetch('/api/admin/players', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer imba-admin-2025' },
-      body: JSON.stringify(newPlayer),
+      body: JSON.stringify({ ...newPlayer, season: selectedSeason }),
     })
     if (res.ok) {
       showMsg('Player added!')
@@ -259,7 +277,7 @@ export default function AdminTeamsPage() {
                         onChange={e => setNewTeam(t => ({ ...t, league: e.target.value }))}
                         style={{ ...inputS, cursor: 'pointer' }}
                       >
-                        {['Comp', 'Rec', '35+', 'Rec League'].map(l => <option key={l} value={l}>{l}</option>)}
+                        {['Comp', 'Rec', '35+', 'Rec League', 'U17'].map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                     </div>
                     <div>
@@ -293,6 +311,54 @@ export default function AdminTeamsPage() {
                     style={{ backgroundColor: creatingTeam ? '#1a3a1a' : '#27AE60', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 28px', fontSize: '14px', fontWeight: 700, cursor: creatingTeam ? 'not-allowed' : 'pointer' }}
                   >
                     {creatingTeam ? 'Creating...' : 'Create Team'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Team Modal */}
+        {editingTeam && (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #27AE60', borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '420px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '22px' }}>
+                <h3 style={{ color: '#fff', fontWeight: 800, fontSize: '18px', margin: 0 }}>Edit Team</h3>
+                <button onClick={() => setEditingTeam(null)} style={{ background: 'none', border: 'none', color: '#555', fontSize: '20px', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+              </div>
+              <form onSubmit={saveEditTeam}>
+                <div style={{ display: 'grid', gap: '16px', marginBottom: '20px' }}>
+                  <div>
+                    <label style={labelS}>Team Name *</label>
+                    <input
+                      autoFocus
+                      value={editingTeam.name}
+                      onChange={e => setEditingTeam(t => t ? { ...t, name: e.target.value } : t)}
+                      style={inputS}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={labelS}>Team Color</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input
+                        type="color"
+                        value={editingTeam.color}
+                        onChange={e => setEditingTeam(t => t ? { ...t, color: e.target.value } : t)}
+                        style={{ width: '44px', height: '38px', padding: '2px', border: '1px solid #2a2a2a', borderRadius: '6px', backgroundColor: '#111', cursor: 'pointer' }}
+                      />
+                      <span style={{ color: '#888', fontSize: '12px', fontFamily: 'monospace' }}>{editingTeam.color}</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => setEditingTeam(null)}
+                    style={{ backgroundColor: '#2a2a2a', color: '#888', border: 'none', borderRadius: '6px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={editTeamSaving}
+                    style={{ backgroundColor: editTeamSaving ? '#1a3a1a' : '#27AE60', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 28px', fontSize: '14px', fontWeight: 700, cursor: editTeamSaving ? 'not-allowed' : 'pointer' }}>
+                    {editTeamSaving ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               </form>
@@ -349,8 +415,8 @@ export default function AdminTeamsPage() {
         ) : teamsInSeason.length === 0 ? (
           <div style={{ textAlign: 'center', color: '#444', padding: '60px', backgroundColor: '#141414', borderRadius: '12px', border: '1px solid #2a2a2a' }}>
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>🏀</div>
-            <div style={{ color: '#888', fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>No teams found for {selectedSeason}</div>
-            <div style={{ color: '#444', fontSize: '13px' }}>Games need to be scheduled for this season first.</div>
+            <div style={{ color: '#888', fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>No teams in {selectedSeason}</div>
+            <div style={{ color: '#444', fontSize: '13px' }}>Add teams via the Active Teams page, then they will appear here.</div>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
@@ -414,6 +480,10 @@ export default function AdminTeamsPage() {
                         {team.active && (
                           <span style={{ backgroundColor: '#1a4731', color: '#27AE60', border: '1px solid #27AE60', borderRadius: '4px', padding: '1px 8px', fontSize: '10px', fontWeight: 700 }}>● LIVE</span>
                         )}
+                        <button
+                          onClick={e => { e.stopPropagation(); setEditingTeam({ id: team.id, name: team.name, color: team.color }) }}
+                          style={{ marginLeft: 'auto', backgroundColor: '#1e1e1e', color: '#555', border: '1px solid #2a2a2a', borderRadius: '4px', padding: '2px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                        >Edit</button>
                       </div>
                       <div style={{ color: '#444', fontSize: '11px', marginTop: '3px' }}>
                         {draggingOver === team.id

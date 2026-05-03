@@ -8,6 +8,7 @@ interface TeamRow {
   teamName: string
   teamSlug: string
   teamColor: string
+  teamLogo?: string | null
   wins: number
   losses: number
   pct: string
@@ -91,7 +92,10 @@ export default function StandingsWidget({ seasons, defaultSeason }: Props) {
                   <td style={{ padding: '10px 10px', color: i < 2 ? '#4A9FE3' : '#333', fontWeight: 700, fontSize: '11px', width: '24px' }}>{i + 1}</td>
                   <td style={{ padding: '10px 8px' }}>
                     <Link href={`/teams/${team.teamSlug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '7px' }}>
-                      <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: team.teamColor, flexShrink: 0 }} />
+                      {team.teamLogo
+                        ? <img src={team.teamLogo} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '2px', flexShrink: 0 }} />
+                        : <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: team.teamColor, flexShrink: 0 }} />
+                      }
                       <span style={{ color: '#ccc', fontSize: '12px', fontWeight: 600 }}>{team.teamName}</span>
                     </Link>
                   </td>

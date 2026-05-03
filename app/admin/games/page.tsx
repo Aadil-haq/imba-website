@@ -259,7 +259,7 @@ export default function AdminGamesPage() {
                 <div>
                   <label style={labelS}>League</label>
                   <select value={newGame.league} onChange={e => setNewGame(prev => ({ ...prev, league: e.target.value }))} style={selectS}>
-                    {['Comp', 'Rec', '35+', 'Rec League'].map(l => <option key={l} value={l}>{l}</option>)}
+                    {['Comp', 'Rec', '35+', 'Rec League', 'U17'].map(l => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </div>
 

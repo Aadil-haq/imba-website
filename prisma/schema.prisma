@@ -28,6 +28,7 @@ model Player {
   number    Int
   position  String   @default("G")
   isSub     Boolean  @default(false)
+  season    String?
   teamId    String
   team      Team     @relation(fields: [teamId], references: [id])
   createdAt DateTime @default(now())

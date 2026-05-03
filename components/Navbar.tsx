@@ -10,6 +10,7 @@ const navLinks = [
   { href: '/standings', label: 'Standings' },
   { href: '/stats', label: 'Stats' },
   { href: '/teams', label: 'Teams' },
+  { href: '/rules', label: 'Rules' },
 ]
 
 export default function Navbar() {
@@ -50,31 +51,34 @@ export default function Navbar() {
             >
               I
             </span>
-            <div>
-              <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '18px', lineHeight: '1.1' }}>IMBA</div>
-              <div style={{ color: '#4A9FE3', fontSize: '11px', fontWeight: 600 }}>Irving Masjid Basketball</div>
-            </div>
+            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '20px' }}>IMBA</div>
           </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                style={{
-                  color: pathname === link.href ? '#4A9FE3' : '#cccccc',
-                  fontWeight: pathname === link.href ? 700 : 500,
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                  transition: 'color 0.2s',
-                }}
-                onMouseEnter={(e) => { if (pathname !== link.href) (e.target as HTMLElement).style.color = '#ffffff' }}
-                onMouseLeave={(e) => { if (pathname !== link.href) (e.target as HTMLElement).style.color = '#cccccc' }}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isExternal = link.href.startsWith('http')
+              const linkStyle = {
+                color: (!isExternal && pathname === link.href) ? '#4A9FE3' : '#cccccc',
+                fontWeight: (!isExternal && pathname === link.href) ? 700 : 500,
+                fontSize: '14px',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+              }
+              return isExternal ? (
+                <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" style={linkStyle}
+                  onMouseEnter={(e) => { (e.target as HTMLElement).style.color = '#ffffff' }}
+                  onMouseLeave={(e) => { (e.target as HTMLElement).style.color = '#cccccc' }}>
+                  {link.label}
+                </a>
+              ) : (
+                <Link key={link.href} href={link.href} style={linkStyle}
+                  onMouseEnter={(e) => { if (pathname !== link.href) (e.target as HTMLElement).style.color = '#ffffff' }}
+                  onMouseLeave={(e) => { if (pathname !== link.href) (e.target as HTMLElement).style.color = '#cccccc' }}>
+                  {link.label}
+                </Link>
+              )
+            })}
             <Link
               href="/register"
               style={{
@@ -110,23 +114,28 @@ export default function Navbar() {
         {/* Mobile menu */}
         {menuOpen && (
           <div style={{ backgroundColor: '#1a1a1a', borderTop: '1px solid #2a2a2a' }} className="md:hidden py-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                style={{
-                  display: 'block',
-                  color: pathname === link.href ? '#4A9FE3' : '#cccccc',
-                  fontWeight: pathname === link.href ? 700 : 500,
-                  fontSize: '16px',
-                  padding: '12px 16px',
-                  textDecoration: 'none',
-                }}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isExternal = link.href.startsWith('http')
+              const mobileLinkStyle = {
+                display: 'block',
+                color: (!isExternal && pathname === link.href) ? '#4A9FE3' : '#cccccc',
+                fontWeight: (!isExternal && pathname === link.href) ? 700 : 500,
+                fontSize: '16px',
+                padding: '12px 16px',
+                textDecoration: 'none',
+              }
+              return isExternal ? (
+                <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer"
+                  onClick={() => setMenuOpen(false)} style={mobileLinkStyle}>
+                  {link.label}
+                </a>
+              ) : (
+                <Link key={link.href} href={link.href}
+                  onClick={() => setMenuOpen(false)} style={mobileLinkStyle}>
+                  {link.label}
+                </Link>
+              )
+            })}
             <div className="px-4 pt-2">
               <Link
                 href="/register"

@@ -36,7 +36,8 @@ export async function GET(
 
     // Determine which players to show for the requested season.
     // - If a season is given: show players who have stats in that season,
-    //   plus players with zero stats ever (newly registered, haven't played yet).
+    //   plus players with zero stats ever (newly registered, haven't played yet),
+    //   plus players who have a paid registration for this team (handles re-registrants with historical stats).
     // - If no season: show all players on the team.
     let playerIds: Set<string> | null = null
     if (season) {
@@ -46,9 +47,19 @@ export async function GET(
         distinct: ['playerId'],
       })
       const statIdSet = new Set(statRows.map(r => r.playerId))
-      // Also include players with no game stats at all (registered but not yet played)
+      // Players with no game stats at all (registered but not yet played)
       const noStatPlayers = team.players.filter(p => p.gameStat.length === 0).map(p => p.id)
-      playerIds = new Set([...statIdSet, ...noStatPlayers])
+      // Players who paid and chose this team (covers re-registrants with historical stats)
+      const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
+      const paidRegs = await prisma.registration.findMany({
+        where: { paymentStatus: 'paid', teamPref: team.name },
+        select: { firstName: true, lastName: true },
+      })
+      const paidNames = new Set(paidRegs.map(r => norm(`${r.firstName} ${r.lastName}`)))
+      const paidPlayerIds = team.players
+        .filter(p => paidNames.has(norm(p.name)))
+        .map(p => p.id)
+      playerIds = new Set([...statIdSet, ...noStatPlayers, ...paidPlayerIds])
     }
 
     // Per-season records

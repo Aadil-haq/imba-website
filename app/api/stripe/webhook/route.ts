@@ -1,31 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-
-async function addPlayerFromRegistration(reg: {
-  firstName: string; lastName: string; teamPref: string | null
-  jerseyNumber: string | null; position: string
-}) {
-  if (!reg.teamPref) return
-  const team = await prisma.team.findFirst({
-    where: { name: reg.teamPref.trim() },
-    orderBy: { createdAt: 'desc' },
-  })
-  if (!team) { console.error('No team found for teamPref:', reg.teamPref); return }
-  const fullName = `${reg.firstName.trim()} ${reg.lastName.trim()}`
-  const exists = await prisma.player.findFirst({ where: { name: fullName, teamId: team.id } })
-  if (!exists) {
-    await prisma.player.create({
-      data: {
-        name: fullName,
-        number: parseInt(reg.jerseyNumber || '0') || 0,
-        position: reg.position || 'G',
-        isSub: false,
-        teamId: team.id,
-      },
-    })
-    console.log('Auto-rostered:', fullName, '->', team.name)
-  }
-}
+import { addPlayerFromRegistration } from '@/app/api/admin/registrations/route'
 
 export async function POST(request: Request) {
   try {
@@ -54,12 +29,32 @@ export async function POST(request: Request) {
       const registrationId = session.metadata?.registrationId
 
       if (registrationId) {
+        // Extract promo code if one was used
+        let discountCode: string | null = null
+        try {
+          const discounts = session.total_details?.breakdown?.discounts ?? []
+          const promoCode = discounts[0]?.discount?.promotion_code
+          if (typeof promoCode === 'string') {
+            // promoCode is an ID — fetch the actual code string
+            const Stripe2 = (await import('stripe')).default
+            const stripe2 = new Stripe2(stripeKey!)
+            const pc = await stripe2.promotionCodes.retrieve(promoCode)
+            discountCode = pc.code ?? null
+          } else if (promoCode?.code) {
+            discountCode = promoCode.code
+          }
+        } catch { /* non-fatal */ }
+
         const reg = await prisma.registration.update({
           where: { id: registrationId },
-          data: { paymentStatus: 'paid', stripeSession: session.id },
+          data: {
+            paymentStatus: 'paid',
+            stripeSession: session.id,
+            amount: session.amount_total ?? 8000,
+            ...(discountCode ? { discountCode } : {}),
+          },
         })
 
-        // Auto-add player to team roster — isolated so a failure never blocks payment confirmation
         try {
           await addPlayerFromRegistration(reg)
         } catch (err) {

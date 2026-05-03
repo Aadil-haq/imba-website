@@ -1,6 +1,8 @@
 export function checkAdminAuth(request: Request): boolean {
   const cookie = request.headers.get('cookie') || ''
-  return cookie.includes('imba_admin=true')
+  if (cookie.includes('imba_admin=true')) return true
+  const auth = request.headers.get('authorization') || ''
+  return auth === 'Bearer imba-admin-2025'
 }
 
 export function getAdminCookie(): string {

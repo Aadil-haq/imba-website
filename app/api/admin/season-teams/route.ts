@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     // Get all teams
     const allTeams = await prisma.team.findMany({
       orderBy: { name: 'asc' },
-      select: { id: true, name: true, color: true, logo: true, league: true, active: true },
+      select: { id: true, name: true, slug: true, color: true, logo: true, league: true, active: true },
     })
 
     const activeTeams = allTeams.filter(t => activeIds.includes(t.id))

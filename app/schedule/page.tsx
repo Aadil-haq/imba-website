@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 interface Team { id: string; name: string; slug: string; color: string; logo?: string | null }
 interface Game {
@@ -69,14 +70,17 @@ function pct(made: number, att: number) {
   return ((made / att) * 100).toFixed(0) + '%'
 }
 
-function StatTable({ stats, teamName, teamColor }: { stats: PlayerStatRow[]; teamName: string; teamColor: string }) {
+function StatTable({ stats, teamName, teamColor, teamLogo }: { stats: PlayerStatRow[]; teamName: string; teamColor: string; teamLogo?: string | null }) {
   if (stats.length === 0) return (
     <div style={{ color: '#555', fontSize: '13px', padding: '16px', textAlign: 'center' }}>No stats recorded</div>
   )
   return (
     <div style={{ overflowX: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-        <div style={{ width: '10px', height: '10px', backgroundColor: teamColor, borderRadius: '50%' }} />
+        {teamLogo
+          ? <img src={teamLogo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '3px' }} />
+          : <div style={{ width: '10px', height: '10px', backgroundColor: teamColor, borderRadius: '50%' }} />
+        }
         <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px' }}>{teamName}</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '480px', fontSize: '13px' }}>
@@ -158,7 +162,10 @@ function BoxScoreModal({ gameId, onClose }: { gameId: string; onClose: () => voi
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
                 {/* Away */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                  <div style={{ width: '10px', height: '10px', backgroundColor: box.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                  {box.awayTeam.logo
+                    ? <img src={box.awayTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '3px', flexShrink: 0 }} />
+                    : <div style={{ width: '10px', height: '10px', backgroundColor: box.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                  }
                   <span style={{ color: awayWon ? '#fff' : '#888', fontWeight: awayWon ? 800 : 600, fontSize: 'clamp(13px, 2vw, 16px)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {box.awayTeam.name}
                   </span>
@@ -174,7 +181,10 @@ function BoxScoreModal({ gameId, onClose }: { gameId: string; onClose: () => voi
                   <span style={{ color: homeWon ? '#fff' : '#888', fontWeight: homeWon ? 800 : 600, fontSize: 'clamp(13px, 2vw, 16px)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>
                     {box.homeTeam.name}
                   </span>
-                  <div style={{ width: '10px', height: '10px', backgroundColor: box.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                  {box.homeTeam.logo
+                    ? <img src={box.homeTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '3px', flexShrink: 0 }} />
+                    : <div style={{ width: '10px', height: '10px', backgroundColor: box.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                  }
                 </div>
               </div>
               <div style={{ textAlign: 'center', color: '#555', fontSize: '12px', marginTop: '4px' }}>
@@ -191,9 +201,9 @@ function BoxScoreModal({ gameId, onClose }: { gameId: string; onClose: () => voi
         {/* Box scores */}
         {!loading && box && (
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
-            <StatTable stats={box.awayStats} teamName={box.awayTeam.name} teamColor={box.awayTeam.color} />
+            <StatTable stats={box.awayStats} teamName={box.awayTeam.name} teamColor={box.awayTeam.color} teamLogo={box.awayTeam.logo} />
             <div style={{ height: '1px', backgroundColor: '#2a2a2a' }} />
-            <StatTable stats={box.homeStats} teamName={box.homeTeam.name} teamColor={box.homeTeam.color} />
+            <StatTable stats={box.homeStats} teamName={box.homeTeam.name} teamColor={box.homeTeam.color} teamLogo={box.homeTeam.logo} />
           </div>
         )}
 
@@ -208,6 +218,17 @@ function BoxScoreModal({ gameId, onClose }: { gameId: string; onClose: () => voi
 }
 
 export default function SchedulePage() {
+  return (
+    <Suspense fallback={<div style={{ backgroundColor: '#111111', minHeight: '100vh' }} />}>
+      <SchedulePageContent />
+    </Suspense>
+  )
+}
+
+function SchedulePageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [seasonsLoaded, setSeasonsLoaded] = useState(false)
@@ -217,21 +238,34 @@ export default function SchedulePage() {
   const [filterTeam, setFilterTeam] = useState('all')
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
 
+  const updateUrl = (season: string, league: string, team: string) => {
+    const p = new URLSearchParams()
+    if (season) p.set('season', season)
+    if (league !== 'all') p.set('league', league)
+    if (team !== 'all') p.set('team', team)
+    router.replace(`/schedule${p.toString() ? '?' + p : ''}`, { scroll: false })
+  }
+
   useEffect(() => {
     fetch('/api/seasons')
       .then(r => r.json())
       .then((data: SeasonOption[]) => {
         setSeasonOptions(data)
-        if (data.length > 0) setSelectedSeason(data[0].season)
+        const urlSeason = searchParams.get('season')
+        const urlLeague = searchParams.get('league') || 'all'
+        const urlTeam = searchParams.get('team') || 'all'
+        const match = urlSeason && data.find(s => s.season === urlSeason)
+        setSelectedLeague(urlLeague)
+        setFilterTeam(urlTeam)
+        setSelectedSeason(match ? urlSeason : (data[0]?.season ?? ''))
         setSeasonsLoaded(true)
       })
       .catch(() => setSeasonsLoaded(true))
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!seasonsLoaded || !selectedSeason) return
     setLoading(true)
-    setFilterTeam('all')
     const params = new URLSearchParams()
     params.set('season', selectedSeason)
     if (selectedLeague !== 'all') params.set('league', selectedLeague)
@@ -298,7 +332,10 @@ export default function SchedulePage() {
     playoffKeys.forEach((k, i) => {
       const fromEnd = playoffKeys.length - 1 - i
       const label = fromEnd === 0 ? 'Finals' : fromEnd === 1 ? 'Semi Finals' : fromEnd === 2 ? 'Quarterfinals' : 'Round 1'
-      groupLabelMap[k] = { label, playoff: true, byeTeams: [] }
+      // Show bye teams for early playoff rounds (not Finals/Semis) where not all teams play
+      const playing = new Set(groups[k].flatMap(g => [g.homeTeam.name, g.awayTeam.name]))
+      const byeTeams = fromEnd >= 2 ? [...allTeamsInView.values()].filter(n => !playing.has(n)).sort() : []
+      groupLabelMap[k] = { label, playoff: true, byeTeams }
     })
   }
 
@@ -354,8 +391,11 @@ export default function SchedulePage() {
                 onChange={e => {
                   const l = e.target.value
                   setSelectedLeague(l)
+                  setFilterTeam('all')
                   const matching = l === 'all' ? seasonOptions : seasonOptions.filter(s => s.league === l)
-                  if (matching.length > 0) setSelectedSeason(matching[0].season)
+                  const newSeason = matching[0]?.season ?? selectedSeason
+                  if (matching.length > 0) setSelectedSeason(newSeason)
+                  updateUrl(newSeason, l, 'all')
                 }}
                 style={selectStyle}
               >
@@ -369,7 +409,7 @@ export default function SchedulePage() {
               <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>SEASON</label>
               <select
                 value={selectedSeason}
-                onChange={e => setSelectedSeason(e.target.value)}
+                onChange={e => { setSelectedSeason(e.target.value); setFilterTeam('all'); updateUrl(e.target.value, selectedLeague, 'all') }}
                 style={selectStyle}
               >
                 {filteredSeasons.map(s => (
@@ -382,7 +422,7 @@ export default function SchedulePage() {
                 <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TEAM</label>
                 <select
                   value={filterTeam}
-                  onChange={e => setFilterTeam(e.target.value)}
+                  onChange={e => { setFilterTeam(e.target.value); updateUrl(selectedSeason, selectedLeague, e.target.value) }}
                   style={selectStyle}
                 >
                   <option value="all">All Teams</option>

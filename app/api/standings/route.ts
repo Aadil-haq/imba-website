@@ -6,6 +6,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const season = searchParams.get('season') || null
     const league = searchParams.get('league') || null
+    const playoffCountParam = searchParams.get('playoffCount')
 
     // Build game filter — regular season only (exclude playoff markers 97/98/99)
     const gameWhere: Record<string, unknown> = { played: true, week: { lt: 90 } }
@@ -81,6 +82,7 @@ export async function GET(request: Request) {
           teamName: team.name,
           teamSlug: team.slug,
           teamColor: team.color,
+          teamLogo: team.logo ?? null,
           league: team.league,
           wins,
           losses,
@@ -103,13 +105,19 @@ export async function GET(request: Request) {
     // Find teams that actually appeared in playoff games for this season
     let playoffTeamIds: string[] = []
     if (season) {
-      const playoffGames = await prisma.game.findMany({
-        where: { season, week: { gte: 90 } },
-        select: { homeTeamId: true, awayTeamId: true },
-      })
-      const ids = new Set<string>()
-      playoffGames.forEach(g => { ids.add(g.homeTeamId); ids.add(g.awayTeamId) })
-      playoffTeamIds = [...ids]
+      const playoffCount = playoffCountParam ? parseInt(playoffCountParam, 10) : null
+      if (playoffCount !== null && playoffCount > 0) {
+        // Use top N teams from sorted standings as playoff qualifiers
+        playoffTeamIds = standings.slice(0, playoffCount).map(t => t!.teamId)
+      } else {
+        const playoffGames = await prisma.game.findMany({
+          where: { season, week: { gte: 90 } },
+          select: { homeTeamId: true, awayTeamId: true },
+        })
+        const ids = new Set<string>()
+        playoffGames.forEach(g => { ids.add(g.homeTeamId); ids.add(g.awayTeamId) })
+        playoffTeamIds = [...ids]
+      }
     }
 
     return NextResponse.json({ standings, playoffTeamIds })
