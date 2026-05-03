@@ -15,17 +15,17 @@ export async function POST(request: Request) {
   if (codes.length === 0) return NextResponse.json({ error: 'No codes provided' }, { status: 400 })
 
   const Stripe = (await import('stripe')).default
-  const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' as any })
+  const stripe = new Stripe(stripeKey)
 
   const results: string[] = []
 
   for (const { code, percentOff } of codes) {
     try {
       // Create a coupon for this percentage
-      const coupon = await stripe.coupons.create({ percent_off: percentOff, duration: 'once' })
+      const coupon = await (stripe.coupons.create as any)({ percent_off: percentOff, duration: 'once' })
 
-      // Create the promo code
-      const promo = await stripe.promotionCodes.create({
+      // Create the promo code using the coupon ID
+      const promo = await (stripe.promotionCodes.create as any)({
         coupon: coupon.id,
         code: code.toUpperCase(),
       })

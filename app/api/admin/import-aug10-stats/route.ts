@@ -118,7 +118,7 @@ export async function POST(request: Request) {
   }
 
   if (statsToCreate.length > 0) {
-    await prisma.playerGameStat.createMany({ data: statsToCreate, skipDuplicates: true })
+    await (prisma.playerGameStat.createMany as any)({ data: statsToCreate, skipDuplicates: true })
     results.push(`Created ${statsToCreate.length} stat records`)
   }
 
