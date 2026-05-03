@@ -24,17 +24,18 @@ export async function GET(request: Request) {
       })
       const statPlayerIds = new Set(statRows.map(r => r.playerId))
 
-      // 2. Players currently on a team that is assigned to this season
-      //    (covers new seasons with no games yet)
-      const rosterPlayers = seasonTeamIds.length > 0
+      // 2. For new seasons (no games yet), use player.season field to find
+      //    players who were rostered specifically for this season
+      const seasonTaggedPlayers = seasonTeamIds.length > 0
         ? await prisma.player.findMany({
-            where: { teamId: { in: seasonTeamIds }, isSub: false },
+            where: { teamId: { in: seasonTeamIds }, isSub: false, season },
             select: { id: true },
           })
         : []
-      const rosterIds = new Set(rosterPlayers.map(p => p.id))
+      const seasonTaggedIds = new Set(seasonTaggedPlayers.map(p => p.id))
 
-      const allPlayerIds = [...new Set([...statPlayerIds, ...rosterIds])]
+      // Merge: stat-based (historical) + season-tagged (new seasons)
+      const allPlayerIds = [...new Set([...statPlayerIds, ...seasonTaggedIds])]
 
       if (allPlayerIds.length === 0) return NextResponse.json([])
 
