@@ -34,11 +34,17 @@ export async function addPlayerFromRegistration(reg: {
   // rather than using the registration's generic season field (e.g. "Summer 2026")
   const leagueSeason = activeSeasons.find(s => (seasonTeamsMap[s] ?? []).includes(team.id)) ?? reg.season
 
-  // Check if already rostered on this team for this season
+  // Check if already rostered on this team (any season) — prevents duplicates
   const exists = await prisma.player.findFirst({
-    where: { name: fullName, teamId: team.id, season: leagueSeason },
+    where: { name: fullName, teamId: team.id },
   })
-  if (exists) return { ok: true, msg: `Already rostered: ${fullName}` }
+  if (exists) {
+    // Update season to correct value if needed
+    if (exists.season !== leagueSeason) {
+      await prisma.player.update({ where: { id: exists.id }, data: { season: leagueSeason } })
+    }
+    return { ok: true, msg: `Already rostered: ${fullName}` }
+  }
 
   await prisma.player.create({
     data: {

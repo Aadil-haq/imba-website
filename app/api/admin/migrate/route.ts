@@ -38,6 +38,43 @@ export async function POST(request: Request) {
       results.push(`AWA stats fixed: ${rows} rows updated`)
     } catch (e: any) { results.push('AWA stats fix: ' + e.message) }
 
+    // ── Deduplicate players: same name + same team → keep one, delete rest ────
+    try {
+      const allPlayers = await prisma.player.findMany({
+        select: { id: true, name: true, teamId: true, season: true },
+        orderBy: { id: 'asc' }, // older cuid = created first
+      })
+
+      // Group by name+teamId
+      const groups: Record<string, typeof allPlayers> = {}
+      for (const p of allPlayers) {
+        const key = `${p.name.trim().toLowerCase()}__${p.teamId}`
+        if (!groups[key]) groups[key] = []
+        groups[key].push(p)
+      }
+
+      let deleted = 0
+      for (const group of Object.values(groups)) {
+        if (group.length <= 1) continue
+
+        // Keep the one with a non-null season (correctly tagged) or oldest ID
+        const keep = group.find(p => p.season !== null) ?? group[0]
+        const toDelete = group.filter(p => p.id !== keep.id)
+
+        for (const p of toDelete) {
+          // Reassign any stats from the duplicate to the keeper
+          await prisma.playerGameStat.updateMany({
+            where: { playerId: p.id },
+            data: { playerId: keep.id },
+          }).catch(() => {}) // ignore unique constraint conflicts
+          await prisma.playerGameStat.deleteMany({ where: { playerId: p.id } })
+          await prisma.player.delete({ where: { id: p.id } })
+          deleted++
+        }
+      }
+      results.push(`Deduplication: removed ${deleted} duplicate player records`)
+    } catch (e: any) { results.push('Deduplication: ' + e.message) }
+
     // ── Backfill player.season from registration season to actual league season ──
     try {
       const stSetting = await prisma.siteSetting.findUnique({ where: { key: 'season_teams' } })
