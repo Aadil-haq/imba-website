@@ -38,26 +38,6 @@ export async function POST(request: Request) {
       results.push(`AWA stats fixed: ${rows} rows updated`)
     } catch (e: any) { results.push('AWA stats fix: ' + e.message) }
 
-    // ── Remove script-injected Aug 10 game (Halal Hustlers) ───────────────────
-    try {
-      // Find games on 2025-08-10 involving Halal Hustlers (inserted via script, not admin)
-      const badGames = await prisma.game.findMany({
-        where: {
-          date: { gte: new Date('2025-08-10T00:00:00Z'), lt: new Date('2025-08-11T00:00:00Z') },
-          OR: [
-            { homeTeamId: 'cmoaod9vf00e8lkpx34075voy' },
-            { awayTeamId: 'cmoaod9vf00e8lkpx34075voy' },
-          ],
-        },
-        select: { id: true },
-      })
-      for (const g of badGames) {
-        await prisma.playerGameStat.deleteMany({ where: { gameId: g.id } })
-        await prisma.game.delete({ where: { id: g.id } })
-      }
-      results.push(`Removed ${badGames.length} script-injected Aug 10 game(s)`)
-    } catch (e: any) { results.push('Aug 10 game cleanup: ' + e.message) }
-
     // ── Backfill player.season from registration season to actual league season ──
     try {
       const stSetting = await prisma.siteSetting.findUnique({ where: { key: 'season_teams' } })
