@@ -41,25 +41,26 @@ export async function GET(
     // - If no season: show all players on the team.
     let playerIds: Set<string> | null = null
     if (season) {
+      // 1. Players with stats in this season
       const statRows = await prisma.playerGameStat.findMany({
         where: { teamId: team.id, game: { season } },
         select: { playerId: true },
         distinct: ['playerId'],
       })
       const statIdSet = new Set(statRows.map(r => r.playerId))
-      // Players with no game stats at all (registered but not yet played)
-      const noStatPlayers = team.players.filter(p => p.gameStat.length === 0).map(p => p.id)
-      // Players who paid and chose this team (covers re-registrants with historical stats)
-      const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
-      const paidRegs = await prisma.registration.findMany({
-        where: { paymentStatus: 'paid', teamPref: team.name },
-        select: { firstName: true, lastName: true },
-      })
-      const paidNames = new Set(paidRegs.map(r => norm(`${r.firstName} ${r.lastName}`)))
-      const paidPlayerIds = team.players
-        .filter(p => paidNames.has(norm(p.name)))
+
+      // 2. Players tagged with this exact season (auto-rostered via registration)
+      const seasonTagged = team.players
+        .filter(p => p.season === season)
         .map(p => p.id)
-      playerIds = new Set([...statIdSet, ...noStatPlayers, ...paidPlayerIds])
+
+      // 3. Fallback: players with a non-null season tag and no career stats at all
+      //    (catches legacy mismatch where player.season = "Summer 2026" but season = "D2 Rec 2026 Summer")
+      const noStatSeasonPlayers = team.players
+        .filter(p => p.gameStat.length === 0 && p.season != null)
+        .map(p => p.id)
+
+      playerIds = new Set([...statIdSet, ...seasonTagged, ...noStatSeasonPlayers])
     }
 
     // Per-season records

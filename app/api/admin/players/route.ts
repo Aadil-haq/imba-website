@@ -25,13 +25,22 @@ export async function GET(request: Request) {
       const statPlayerIds = new Set(statRows.map(r => r.playerId))
 
       // 2. For new seasons (no games yet), use player.season field to find
-      //    players who were rostered specifically for this season
-      const seasonTaggedPlayers = seasonTeamIds.length > 0
+      //    players rostered for this season. Try exact match first; if none found
+      //    fall back to any player on a season team with a non-null season tag
+      //    (handles legacy mismatch where player.season = "Summer 2026" but
+      //    season key = "D2 Rec 2026 Summer")
+      let seasonTaggedPlayers = seasonTeamIds.length > 0
         ? await prisma.player.findMany({
             where: { teamId: { in: seasonTeamIds }, isSub: false, season },
             select: { id: true },
           })
         : []
+      if (seasonTaggedPlayers.length === 0 && seasonTeamIds.length > 0) {
+        seasonTaggedPlayers = await prisma.player.findMany({
+          where: { teamId: { in: seasonTeamIds }, isSub: false, season: { not: null } },
+          select: { id: true },
+        })
+      }
       const seasonTaggedIds = new Set(seasonTaggedPlayers.map(p => p.id))
 
       // Merge: stat-based (historical) + season-tagged (new seasons)

@@ -38,6 +38,37 @@ export async function POST(request: Request) {
       results.push(`AWA stats fixed: ${rows} rows updated`)
     } catch (e: any) { results.push('AWA stats fix: ' + e.message) }
 
+    // ── Backfill player.season from registration season to actual league season ──
+    try {
+      const stSetting = await prisma.siteSetting.findUnique({ where: { key: 'season_teams' } })
+      const seasonTeamsMap: Record<string, string[]> = stSetting ? JSON.parse(stSetting.value) : {}
+
+      let backfilled = 0
+      for (const [leagueSeason, teamIds] of Object.entries(seasonTeamsMap)) {
+        if (!teamIds.length) continue
+        // Find players on these teams whose season doesn't match the league season
+        // (e.g. player.season = "Summer 2026" but league season = "D2 Rec 2026 Summer")
+        const toFix = await prisma.player.findMany({
+          where: {
+            teamId: { in: teamIds },
+            isSub: false,
+            season: { not: null },
+            NOT: { season: leagueSeason },
+          },
+          select: { id: true },
+        })
+        if (toFix.length > 0) {
+          await prisma.player.updateMany({
+            where: { id: { in: toFix.map(p => p.id) } },
+            data: { season: leagueSeason },
+          })
+          backfilled += toFix.length
+          results.push(`Backfilled ${toFix.length} players → ${leagueSeason}`)
+        }
+      }
+      if (backfilled === 0) results.push('Player season backfill: nothing to update')
+    } catch (e: any) { results.push('Player season backfill: ' + e.message) }
+
     return NextResponse.json({ ok: true, results })
   } catch (e: any) {
     return NextResponse.json({ ok: true, msg: e.message })

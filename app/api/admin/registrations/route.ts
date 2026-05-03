@@ -30,9 +30,13 @@ export async function addPlayerFromRegistration(reg: {
   const team = allMatching.find(t => activeTeamIds.has(t.id)) ?? allMatching[allMatching.length - 1]
   const fullName = `${reg.firstName.trim()} ${reg.lastName.trim()}`
 
-  // Check if already rostered on this team (any season entry)
+  // Resolve the actual league season name (e.g. "D2 Rec 2026 Summer") from season_teams
+  // rather than using the registration's generic season field (e.g. "Summer 2026")
+  const leagueSeason = activeSeasons.find(s => (seasonTeamsMap[s] ?? []).includes(team.id)) ?? reg.season
+
+  // Check if already rostered on this team for this season
   const exists = await prisma.player.findFirst({
-    where: { name: fullName, teamId: team.id },
+    where: { name: fullName, teamId: team.id, season: leagueSeason },
   })
   if (exists) return { ok: true, msg: `Already rostered: ${fullName}` }
 
@@ -43,10 +47,10 @@ export async function addPlayerFromRegistration(reg: {
       position: reg.position || 'G',
       isSub: false,
       teamId: team.id,
-      season: reg.season,
+      season: leagueSeason,
     },
   })
-  return { ok: true, msg: `Rostered: ${fullName} → ${team.name}` }
+  return { ok: true, msg: `Rostered: ${fullName} → ${team.name} [${leagueSeason}]` }
 }
 
 export async function GET(request: Request) {
