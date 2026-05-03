@@ -20,6 +20,23 @@ export async function GET(request: Request) {
   }
 }
 
+export async function DELETE(request: Request) {
+  if (!checkAdminAuth(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+    // Delete stats first (foreign key), then the game
+    await prisma.playerGameStat.deleteMany({ where: { gameId: id } })
+    await prisma.game.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to delete game' }, { status: 500 })
+  }
+}
+
 export async function PATCH(request: Request) {
   if (!checkAdminAuth(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

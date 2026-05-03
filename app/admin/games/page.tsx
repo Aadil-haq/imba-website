@@ -164,10 +164,14 @@ export default function AdminGamesPage() {
     else showMsg('✗ Error updating game', 'err')
   }
 
-  const deleteGame = async (id: string) => {
-    if (!confirm('Delete this game and all its stats?')) return
-    await fetch(`/api/games/${id}`, { method: 'DELETE' })
-    loadGames(selectedSeason)
+  const deleteGame = async (id: string, name: string) => {
+    if (!confirm(`Delete "${name}"? This will also remove all stats for this game.`)) return
+    const res = await fetch(`/api/admin/games?id=${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer imba-admin-2025' },
+    })
+    if (res.ok) { showMsg('✓ Game deleted'); loadGames(selectedSeason) }
+    else showMsg('✗ Error deleting game', 'err')
   }
 
   // ── Derived display data ───────────────────────────────────────────────────
@@ -498,10 +502,10 @@ export default function AdminGamesPage() {
                           Edit
                         </button>
                         <button
-                          onClick={() => deleteGame(g.id)}
-                          style={{ backgroundColor: '#2a1a1a', color: '#e74c3c', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                          onClick={() => deleteGame(g.id, `${g.homeTeam?.name} vs ${g.awayTeam?.name}`)}
+                          style={{ backgroundColor: '#2a1a1a', color: '#e74c3c', border: '1px solid #e74c3c33', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
                         >
-                          Del
+                          Delete
                         </button>
                       </div>
                     </td>
