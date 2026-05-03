@@ -54,13 +54,7 @@ export async function GET(
         .filter(p => p.season === season)
         .map(p => p.id)
 
-      // 3. Fallback: players with a non-null season tag and no career stats at all
-      //    (catches legacy mismatch where player.season = "Summer 2026" but season = "D2 Rec 2026 Summer")
-      const noStatSeasonPlayers = team.players
-        .filter(p => p.gameStat.length === 0 && p.season != null)
-        .map(p => p.id)
-
-      playerIds = new Set([...statIdSet, ...seasonTagged, ...noStatSeasonPlayers])
+      playerIds = new Set([...statIdSet, ...seasonTagged])
     }
 
     // Per-season records
