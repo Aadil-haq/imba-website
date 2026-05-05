@@ -40,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.refresh()
   }
 
-  const currentPage = navItems.find(i => i.pathname === pathname || i.href === pathname)
+  const currentPage = navItems.find(i => i.href === pathname)
 
   const Sidebar = (
     <div style={{
