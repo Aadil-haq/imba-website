@@ -5,6 +5,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 
 interface Team { id: string; name: string; slug: string; color: string; logo?: string | null; active: boolean; league: string }
 interface Player { id: string; name: string; number: number; position: string; teamId: string; isSub: boolean }
+interface DbPlayer { id: string; name: string; number: number; position: string; teamId: string }
 interface SeasonRow { season: string; league: string; active: boolean }
 interface EditingPlayer { id: string; name: string; number: string; position: string; teamId: string }
 interface NewPlayer { name: string; number: string; position: string; teamId: string }
@@ -36,6 +37,11 @@ export default function AdminTeamsPage() {
   const [addingPlayerToTeam, setAddingPlayerToTeam] = useState<string | null>(null)
   const [newPlayer, setNewPlayer] = useState<NewPlayer>({ name: '', number: '', position: 'G', teamId: '' })
   const [savingPlayer, setSavingPlayer] = useState(false)
+
+  // Player search / autocomplete
+  const [allDbPlayers, setAllDbPlayers] = useState<DbPlayer[]>([])
+  const [playerSearchQuery, setPlayerSearchQuery] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   // Edit player modal
   const [editingPlayer, setEditingPlayer] = useState<EditingPlayer | null>(null)
@@ -106,6 +112,14 @@ export default function AdminTeamsPage() {
     fetch('/api/teams')
       .then(r => r.json())
       .then(data => setAllTeams(Array.isArray(data) ? data : []))
+      .catch(() => {})
+  }, [])
+
+  // Load all players from DB for search autocomplete
+  useEffect(() => {
+    fetch('/api/admin/players', { headers: { Authorization: 'Bearer imba-admin-2025' } })
+      .then(r => r.json())
+      .then(data => setAllDbPlayers(Array.isArray(data) ? data : []))
       .catch(() => {})
   }, [])
 
@@ -539,16 +553,65 @@ export default function AdminTeamsPage() {
                   {isAddingHere ? (
                     <div style={{ padding: '14px', backgroundColor: '#0f0f0f', borderTop: '1px solid #1e1e1e' }}>
                       <form onSubmit={addPlayer}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px 80px', gap: '8px', marginBottom: '10px' }}>
-                          <div>
-                            <label style={labelS}>Name *</label>
-                            <input
-                              autoFocus
-                              value={newPlayer.name}
-                              onChange={e => setNewPlayer({ ...newPlayer, name: e.target.value })}
-                              style={inputS} placeholder="Player name" required
-                            />
-                          </div>
+                        {/* Search existing players */}
+                        <div style={{ marginBottom: '10px', position: 'relative' }}>
+                          <label style={labelS}>Search existing player or type new name *</label>
+                          <input
+                            autoFocus
+                            value={playerSearchQuery}
+                            onChange={e => {
+                              const q = e.target.value
+                              setPlayerSearchQuery(q)
+                              setNewPlayer(p => ({ ...p, name: q }))
+                              setShowSuggestions(q.length > 0)
+                            }}
+                            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                            style={{ ...inputS, borderColor: '#3a3a3a' }}
+                            placeholder="Search by name..."
+                            required
+                          />
+                          {showSuggestions && (() => {
+                            const q = playerSearchQuery.toLowerCase()
+                            const suggestions = allDbPlayers.filter(p =>
+                              p.name.toLowerCase().includes(q) && p.teamId !== newPlayer.teamId
+                            ).slice(0, 8)
+                            return suggestions.length > 0 ? (
+                              <div style={{
+                                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                                backgroundColor: '#1a1a1a', border: '1px solid #3a3a3a', borderRadius: '6px',
+                                marginTop: '2px', maxHeight: '200px', overflowY: 'auto',
+                              }}>
+                                {suggestions.map(p => (
+                                  <div
+                                    key={p.id}
+                                    onMouseDown={() => {
+                                      setNewPlayer(prev => ({
+                                        ...prev,
+                                        name: p.name,
+                                        number: String(p.number),
+                                        position: p.position,
+                                      }))
+                                      setPlayerSearchQuery(p.name)
+                                      setShowSuggestions(false)
+                                    }}
+                                    style={{
+                                      padding: '9px 12px', cursor: 'pointer', display: 'flex',
+                                      alignItems: 'center', justifyContent: 'space-between',
+                                      borderBottom: '1px solid #2a2a2a',
+                                    }}
+                                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = '#2a2a2a'}
+                                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}
+                                  >
+                                    <span style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>{p.name}</span>
+                                    <span style={{ color: '#555', fontSize: '11px' }}>#{p.number} · {p.position}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null
+                          })()}
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
                           <div>
                             <label style={labelS}># Jersey</label>
                             <input
@@ -559,7 +622,7 @@ export default function AdminTeamsPage() {
                             />
                           </div>
                           <div>
-                            <label style={labelS}>Pos</label>
+                            <label style={labelS}>Position</label>
                             <select
                               value={newPlayer.position}
                               onChange={e => setNewPlayer({ ...newPlayer, position: e.target.value })}
@@ -571,11 +634,15 @@ export default function AdminTeamsPage() {
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button type="submit" disabled={savingPlayer}
-                            style={{ backgroundColor: '#27AE60', color: '#fff', border: 'none', borderRadius: '6px', padding: '7px 18px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flex: 1 }}>
+                            style={{ backgroundColor: '#27AE60', color: '#fff', border: 'none', borderRadius: '6px', padding: '9px 18px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flex: 1 }}>
                             {savingPlayer ? 'Adding...' : 'Add Player'}
                           </button>
-                          <button type="button" onClick={() => { setAddingPlayerToTeam(null); setNewPlayer({ name: '', number: '', position: 'G', teamId: '' }) }}
-                            style={{ backgroundColor: '#2a2a2a', color: '#666', border: 'none', borderRadius: '6px', padding: '7px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                          <button type="button" onClick={() => {
+                            setAddingPlayerToTeam(null)
+                            setNewPlayer({ name: '', number: '', position: 'G', teamId: '' })
+                            setPlayerSearchQuery('')
+                          }}
+                            style={{ backgroundColor: '#2a2a2a', color: '#666', border: 'none', borderRadius: '6px', padding: '9px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                             Cancel
                           </button>
                         </div>

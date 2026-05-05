@@ -17,9 +17,9 @@ export async function POST(request: Request) {
   if (!starz) return NextResponse.json({ error: 'Starz team not found' }, { status: 404 })
   results.push(`Found Starz: ${starz.id}`)
 
-  // Find players currently on Al Shabab with a season tag (2026 registrants)
+  // Find all players on Al Shabab (with or without season tag)
   const players = await prisma.player.findMany({
-    where: { teamId: alShabab.id, season: { not: null } },
+    where: { teamId: alShabab.id, isSub: false },
   })
   results.push(`Players on Al Shabab: ${players.map(p => p.name).join(', ')}`)
 
