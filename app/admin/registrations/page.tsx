@@ -216,8 +216,8 @@ export default function AdminRegistrationsPage() {
             { label: 'Total', value: regs.length, color: '#888' },
             { label: 'Paid', value: paidRegs.length, color: '#27AE60' },
             { label: 'Pending', value: regs.filter(r => r.paymentStatus === 'pending').length, color: '#F5A623' },
-            { label: 'Refunded', value: refundedRegs.length, color: '#e74c3c' },
-            { label: 'Net Revenue', value: `$${(netRevenue / 100).toFixed(2)}`, color: '#4A9FE3', sub: totalRefunded > 0 ? `-$${(totalRefunded / 100).toFixed(2)} refunded` : undefined },
+            { label: 'Refunded', value: refundedRegs.length, color: '#e74c3c', sub: totalRefunded > 0 ? `-$${(totalRefunded / 100).toFixed(2)}` : undefined },
+            { label: 'Net Revenue', value: `$${(netRevenue / 100).toFixed(2)}`, color: '#4A9FE3' },
           ].map(card => (
             <div key={card.label} style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '20px' }}>
               <div style={{ color: card.color, fontSize: '24px', fontWeight: 900 }}>{card.value}</div>
