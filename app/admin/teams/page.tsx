@@ -572,9 +572,16 @@ export default function AdminTeamsPage() {
                           />
                           {showSuggestions && (() => {
                             const q = playerSearchQuery.toLowerCase()
-                            const suggestions = allDbPlayers.filter(p =>
-                              p.name.toLowerCase().includes(q) && p.teamId !== newPlayer.teamId
-                            ).slice(0, 8)
+                            // Deduplicate by name — prefer entries with a season tag, then by most recently created
+                            const seen = new Map<string, DbPlayer>()
+                            allDbPlayers.forEach(p => {
+                              const key = p.name.toLowerCase()
+                              if (!key.includes(q)) return
+                              if (p.teamId === newPlayer.teamId) return
+                              const existing = seen.get(key)
+                              if (!existing || (p as any).season) seen.set(key, p)
+                            })
+                            const suggestions = Array.from(seen.values()).slice(0, 8)
                             return suggestions.length > 0 ? (
                               <div style={{
                                 position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
