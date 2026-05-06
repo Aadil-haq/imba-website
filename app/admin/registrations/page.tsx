@@ -21,6 +21,7 @@ export default function AdminRegistrationsPage() {
   const [rerostering, setRerostering] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [refundingId, setRefundingId] = useState<string | null>(null)
+  const [syncingRefunds, setSyncingRefunds] = useState(false)
 
   const load = async () => {
     const data = await fetch('/api/admin/registrations').then(r => r.json())
@@ -92,6 +93,26 @@ export default function AdminRegistrationsPage() {
     }
   }
 
+  const syncRefundsFromStripe = async () => {
+    setSyncingRefunds(true)
+    const res = await fetch('/api/admin/stripe-sync-refunds', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer imba-admin-2025' },
+    })
+    const data = await res.json()
+    setSyncingRefunds(false)
+    if (data.ok) {
+      showMsg(
+        data.refunded > 0
+          ? `✓ Found ${data.refunded} refund${data.refunded !== 1 ? 's' : ''} — roster updated`
+          : `✓ No new refunds found (checked ${data.checked} registrations)`
+      )
+      load()
+    } else {
+      showMsg(data.error || 'Sync failed', 'error')
+    }
+  }
+
   const reRosterAll = async () => {
     if (!confirm('This will add all paid registrants to their teams, creating any missing teams automatically. Continue?')) return
     setRerostering(true)
@@ -156,6 +177,13 @@ export default function AdminRegistrationsPage() {
               style={{ backgroundColor: syncing ? '#2a2a2a' : '#1a1a3a', color: syncing ? '#555' : '#a855f7', border: '1px solid #a855f7', borderRadius: '8px', padding: '10px 18px', fontWeight: 700, fontSize: '13px', cursor: syncing ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
             >
               {syncing ? '⏳ Syncing...' : '⚡ Sync from Stripe'}
+            </button>
+            <button
+              onClick={syncRefundsFromStripe}
+              disabled={syncingRefunds}
+              style={{ backgroundColor: syncingRefunds ? '#2a2a2a' : '#2a0d0d', color: syncingRefunds ? '#555' : '#e74c3c', border: '1px solid #e74c3c', borderRadius: '8px', padding: '10px 18px', fontWeight: 700, fontSize: '13px', cursor: syncingRefunds ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+            >
+              {syncingRefunds ? '⏳ Checking...' : '↩ Sync Refunds from Stripe'}
             </button>
             <button
               onClick={reRosterAll}
