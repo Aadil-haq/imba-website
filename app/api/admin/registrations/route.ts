@@ -87,6 +87,24 @@ export async function PATCH(request: Request) {
       try { await addPlayerFromRegistration(reg) } catch (e) { console.error('Auto-roster on mark-paid failed:', e) }
     }
 
+    // Remove player from roster when marking refunded
+    if (body.paymentStatus === 'refunded' && reg.teamPref) {
+      try {
+        const fullName = `${reg.firstName.trim()} ${reg.lastName.trim()}`
+        // Find the team by teamPref name
+        const team = await prisma.team.findFirst({ where: { name: reg.teamPref.trim() } })
+        if (team) {
+          const player = await prisma.player.findFirst({
+            where: { name: fullName, teamId: team.id },
+          })
+          if (player) {
+            await prisma.playerGameStat.deleteMany({ where: { playerId: player.id } })
+            await prisma.player.delete({ where: { id: player.id } })
+          }
+        }
+      } catch (e) { console.error('Remove player on refund failed:', e) }
+    }
+
     return NextResponse.json(reg)
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update registration' }, { status: 500 })

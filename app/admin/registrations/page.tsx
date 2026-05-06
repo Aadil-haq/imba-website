@@ -20,6 +20,7 @@ export default function AdminRegistrationsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [rerostering, setRerostering] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [refundingId, setRefundingId] = useState<string | null>(null)
 
   const load = async () => {
     const data = await fetch('/api/admin/registrations').then(r => r.json())
@@ -51,6 +52,19 @@ export default function AdminRegistrationsPage() {
       body: JSON.stringify({ id, paymentStatus: 'pending' }),
     })
     if (res.ok) { load() }
+  }
+
+  const markRefunded = async (id: string, name: string) => {
+    if (!confirm(`Mark ${name} as REFUNDED? This will remove them from their team roster.`)) return
+    setRefundingId(id)
+    const res = await fetch('/api/admin/registrations', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, paymentStatus: 'refunded' }),
+    })
+    if (res.ok) { showMsg(`✓ Refunded — ${name} removed from roster`); load() }
+    else showMsg('Failed to process refund', 'error')
+    setRefundingId(null)
   }
 
   const deleteReg = async (id: string, name: string) => {
@@ -117,11 +131,15 @@ export default function AdminRegistrationsPage() {
   }
 
   const discountRegs = regs.filter(r => r.discountCode != null || (r.paymentStatus === 'paid' && r.amount < 8000))
+  const refundedRegs = regs.filter(r => r.paymentStatus === 'refunded')
   const filtered = filter === 'all' ? regs
     : filter === 'discount' ? discountRegs
+    : filter === 'refunded' ? refundedRegs
     : regs.filter(r => r.paymentStatus === filter)
-  const totalRevenue = regs.filter(r => r.paymentStatus === 'paid').reduce((sum, r) => sum + r.amount, 0)
   const paidRegs = regs.filter(r => r.paymentStatus === 'paid')
+  const totalRevenue = paidRegs.reduce((sum, r) => sum + r.amount, 0)
+  const totalRefunded = refundedRegs.reduce((sum, r) => sum + r.amount, 0)
+  const netRevenue = totalRevenue - totalRefunded
 
   return (
     <AdminLayout>
@@ -170,11 +188,13 @@ export default function AdminRegistrationsPage() {
             { label: 'Total', value: regs.length, color: '#888' },
             { label: 'Paid', value: paidRegs.length, color: '#27AE60' },
             { label: 'Pending', value: regs.filter(r => r.paymentStatus === 'pending').length, color: '#F5A623' },
-            { label: 'Revenue', value: `$${(totalRevenue / 100).toFixed(2)}`, color: '#4A9FE3' },
+            { label: 'Refunded', value: refundedRegs.length, color: '#e74c3c' },
+            { label: 'Net Revenue', value: `$${(netRevenue / 100).toFixed(2)}`, color: '#4A9FE3', sub: totalRefunded > 0 ? `-$${(totalRefunded / 100).toFixed(2)} refunded` : undefined },
           ].map(card => (
             <div key={card.label} style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '20px' }}>
               <div style={{ color: card.color, fontSize: '24px', fontWeight: 900 }}>{card.value}</div>
               <div style={{ color: '#555', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginTop: '4px' }}>{card.label}</div>
+              {(card as any).sub && <div style={{ color: '#e74c3c', fontSize: '11px', marginTop: '4px' }}>{(card as any).sub}</div>}
             </div>
           ))}
         </div>
@@ -259,6 +279,7 @@ export default function AdminRegistrationsPage() {
                 { key: 'pending', label: 'Pending', count: regs.filter(r => r.paymentStatus === 'pending').length, activeColor: '#F5A623' },
                 { key: 'paid', label: 'Paid', count: regs.filter(r => r.paymentStatus === 'paid').length, activeColor: '#27AE60' },
                 { key: 'discount', label: '🏷 Discount', count: discountRegs.length, activeColor: '#a855f7' },
+                { key: 'refunded', label: '🔴 Refunded', count: refundedRegs.length, activeColor: '#e74c3c' },
               ].map(({ key, label, count, activeColor }) => (
                 <button key={key} onClick={() => setFilter(key)} style={{
                   padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 700, fontSize: '13px',
@@ -334,13 +355,15 @@ export default function AdminRegistrationsPage() {
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: '5px',
                           padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 800,
-                          backgroundColor: reg.paymentStatus === 'paid' ? '#0d2b1a' : '#2a1e00',
-                          color: reg.paymentStatus === 'paid' ? '#2ecc71' : '#F5A623',
-                          border: `1px solid ${reg.paymentStatus === 'paid' ? '#2ecc71' : '#F5A623'}`,
+                          backgroundColor: reg.paymentStatus === 'paid' ? '#0d2b1a' : reg.paymentStatus === 'refunded' ? '#2a0d0d' : '#2a1e00',
+                          color: reg.paymentStatus === 'paid' ? '#2ecc71' : reg.paymentStatus === 'refunded' ? '#e74c3c' : '#F5A623',
+                          border: `1px solid ${reg.paymentStatus === 'paid' ? '#2ecc71' : reg.paymentStatus === 'refunded' ? '#e74c3c' : '#F5A623'}`,
                           letterSpacing: '0.06em',
                         }}>
                           {reg.paymentStatus === 'paid'
                             ? <><span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#2ecc71', display: 'inline-block' }} />PAID</>
+                            : reg.paymentStatus === 'refunded'
+                            ? <><span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#e74c3c', display: 'inline-block' }} />REFUNDED</>
                             : <><span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#F5A623', display: 'inline-block' }} />PENDING</>
                           }
                         </span>
@@ -354,10 +377,21 @@ export default function AdminRegistrationsPage() {
                             <button onClick={() => markPaid(reg.id)} style={{ backgroundColor: '#1a4731', color: '#27AE60', border: '1px solid #27AE60', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
                               Mark Paid
                             </button>
+                          ) : reg.paymentStatus === 'paid' ? (
+                            <>
+                              <button onClick={() => markPending(reg.id)} style={{ backgroundColor: '#3a2a00', color: '#F5A623', border: '1px solid #F5A623', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                                Revert
+                              </button>
+                              <button
+                                onClick={() => markRefunded(reg.id, `${reg.firstName} ${reg.lastName}`)}
+                                disabled={refundingId === reg.id}
+                                style={{ backgroundColor: '#2a0d0d', color: '#e74c3c', border: '1px solid #e74c3c', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, cursor: refundingId === reg.id ? 'not-allowed' : 'pointer', opacity: refundingId === reg.id ? 0.5 : 1 }}
+                              >
+                                {refundingId === reg.id ? '...' : '↩ Refund'}
+                              </button>
+                            </>
                           ) : (
-                            <button onClick={() => markPending(reg.id)} style={{ backgroundColor: '#3a2a00', color: '#F5A623', border: '1px solid #F5A623', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
-                              Revert
-                            </button>
+                            <span style={{ color: '#555', fontSize: '11px', fontStyle: 'italic' }}>refunded</span>
                           )}
                           <button
                             onClick={() => deleteReg(reg.id, `${reg.firstName} ${reg.lastName}`)}
