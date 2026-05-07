@@ -13,7 +13,6 @@ export async function POST(request: Request) {
       include: { _count: { select: { gameStat: true } } },
     })
 
-    // Group by normalised name
     const byName = new Map<string, typeof players>()
     for (const p of players) {
       const key = p.name.trim().toLowerCase()
@@ -28,7 +27,6 @@ export async function POST(request: Request) {
     for (const [, entries] of byName) {
       if (entries.length < 2) continue
 
-      // Pick canonical: current-season entry with most stats, else overall most stats
       const withCurrent = entries.filter(e => e.season && CURRENT_SEASONS.has(e.season))
       const pool = withCurrent.length > 0 ? withCurrent : entries
       const canonical = pool.reduce((best, e) => e._count.gameStat >= best._count.gameStat ? e : best)
@@ -36,17 +34,39 @@ export async function POST(request: Request) {
 
       for (const dupe of others) {
         try {
-          // Use raw SQL to re-point stats — more reliable on Turso
+          // Get game IDs already under canonical to avoid unique constraint conflict
+          const canonicalStats = await prisma.playerGameStat.findMany({
+            where: { playerId: canonical.id },
+            select: { gameId: true },
+          })
+          const canonicalGameIds = new Set(canonicalStats.map(s => s.gameId))
+
+          // Delete dupe stats that would conflict (same game already in canonical)
+          const dupeStats = await prisma.playerGameStat.findMany({
+            where: { playerId: dupe.id },
+            select: { id: true, gameId: true },
+          })
+          const conflicting = dupeStats.filter(s => canonicalGameIds.has(s.gameId))
+          if (conflicting.length > 0) {
+            await prisma.playerGameStat.deleteMany({
+              where: { id: { in: conflicting.map(s => s.id) } },
+            })
+          }
+
+          // Now safe to move remaining stats to canonical
           await (prisma as any).$executeRawUnsafe(
             `UPDATE "PlayerGameStat" SET "playerId" = ? WHERE "playerId" = ?`,
             canonical.id,
             dupe.id
           )
+
           await prisma.player.delete({ where: { id: dupe.id } })
-          results.push(`✓ ${dupe.name} / ${dupe.season ?? 'legacy'} — ${dupe._count.gameStat} stats moved to canonical`)
+          results.push(
+            `✓ ${dupe.name} — ${dupe._count.gameStat} stats merged (${conflicting.length} duplicate-game entries dropped)`
+          )
           deletedRecords++
         } catch (e: any) {
-          results.push(`✗ ${dupe.name} / ${dupe.id}: ${e.message}`)
+          results.push(`✗ ${dupe.name} / ${dupe.id}: ${e.message?.slice(0, 120)}`)
         }
       }
 
