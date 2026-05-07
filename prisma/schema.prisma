@@ -51,6 +51,7 @@ model Game {
   played     Boolean  @default(false)
   forfeit    Boolean  @default(false)
   driveUrl   String?
+  label      String?
 
   homeTeam    Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam    Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])

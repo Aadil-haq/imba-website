@@ -16,6 +16,7 @@ interface Game {
   time: string
   location: string
   week: number
+  label: string | null
   season: string
   league: string
   played: boolean
@@ -331,7 +332,10 @@ function SchedulePageContent() {
   const labelPlayoffGroups = (playoffKeys: string[]) => {
     playoffKeys.forEach((k, i) => {
       const fromEnd = playoffKeys.length - 1 - i
-      const label = fromEnd === 0 ? 'Finals' : fromEnd === 1 ? 'Semi Finals' : fromEnd === 2 ? 'Quarterfinals' : 'Round 1'
+      const autoLabel = fromEnd === 0 ? 'Finals' : fromEnd === 1 ? 'Semi Finals' : fromEnd === 2 ? 'Quarterfinals' : 'Round 1'
+      // Use explicit label from first game if set
+      const customLabel = groups[k][0]?.label
+      const label = customLabel || autoLabel
       // Show bye teams for early playoff rounds (not Finals/Semis) where not all teams play
       const playing = new Set(groups[k].flatMap(g => [g.homeTeam.name, g.awayTeam.name]))
       const byeTeams = fromEnd >= 2 ? [...allTeamsInView.values()].filter(n => !playing.has(n)).sort() : []
@@ -345,7 +349,13 @@ function SchedulePageContent() {
     regularKeys.forEach((k, i) => {
       const playing = new Set(groups[k].flatMap(g => [g.homeTeam.name, g.awayTeam.name]))
       const byeTeams = [...allTeamsInView.values()].filter(n => !playing.has(n)).sort()
-      groupLabelMap[k] = { label: `Week ${i + 1}`, playoff: false, byeTeams }
+      // Use explicit label from first game if set (e.g. "Play-in")
+      const customLabel = groups[k][0]?.label
+      groupLabelMap[k] = {
+        label: customLabel || `Week ${i + 1}`,
+        playoff: !!customLabel,
+        byeTeams,
+      }
     })
     labelPlayoffGroups(playoffKeys)
   } else {
@@ -353,12 +363,13 @@ function SchedulePageContent() {
     groupKeys.forEach((k, i) => {
       const playing = new Set(groups[k].flatMap(g => [g.homeTeam.name, g.awayTeam.name]))
       const byeTeams = [...allTeamsInView.values()].filter(n => !playing.has(n)).sort()
+      const customLabel = groups[k][0]?.label
       if (i < REGULAR) {
-        groupLabelMap[k] = { label: `Week ${i + 1}`, playoff: false, byeTeams }
+        groupLabelMap[k] = { label: customLabel || `Week ${i + 1}`, playoff: !!customLabel, byeTeams }
       } else {
         const fromEnd = (groupKeys.length - REGULAR) - 1 - (i - REGULAR)
-        const label = fromEnd === 0 ? 'Finals' : fromEnd === 1 ? 'Semi Finals' : fromEnd === 2 ? 'Quarterfinals' : 'Round 1'
-        groupLabelMap[k] = { label, playoff: true, byeTeams: [] }
+        const autoLabel = fromEnd === 0 ? 'Finals' : fromEnd === 1 ? 'Semi Finals' : fromEnd === 2 ? 'Quarterfinals' : 'Round 1'
+        groupLabelMap[k] = { label: customLabel || autoLabel, playoff: true, byeTeams: [] }
       }
     })
   }
