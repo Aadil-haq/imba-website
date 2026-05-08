@@ -2,115 +2,130 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { checkAdminAuth } from '@/lib/auth'
 
-// GET: Preview what would be merged (dry run)
-export async function GET(request: Request) {
-  if (!checkAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  try {
-    const duplicates = await findDuplicates()
-    return NextResponse.json({ duplicates })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
-  }
-}
-
-// POST: Execute the merge
 export async function POST(request: Request) {
-  if (!checkAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!checkAdminAuth(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
-    const results = await mergeAllDuplicates()
-    return NextResponse.json({ ok: true, results })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
-  }
-}
+    // 1. Load all teams
+    const allTeams = await prisma.team.findMany({ orderBy: { name: 'asc' } })
 
-interface TeamWithCounts {
-  id: string
-  name: string
-  league: string
-  gameCount: number
-  playerCount: number
-}
-
-async function findDuplicates(): Promise<Record<string, TeamWithCounts[]>> {
-  const allTeams = await prisma.team.findMany({ orderBy: { name: 'asc' } })
-
-  // Group by name
-  const byName: Record<string, typeof allTeams> = {}
-  for (const t of allTeams) {
-    if (!byName[t.name]) byName[t.name] = []
-    byName[t.name].push(t)
-  }
-
-  // Find names with duplicates and count their games
-  const dupes: Record<string, TeamWithCounts[]> = {}
-  for (const [name, teams] of Object.entries(byName)) {
-    if (teams.length < 2) continue
-
-    const withCounts: TeamWithCounts[] = []
-    for (const t of teams) {
-      const homeGames = await prisma.game.count({ where: { homeTeamId: t.id } })
-      const awayGames = await prisma.game.count({ where: { awayTeamId: t.id } })
-      const players = await prisma.player.count({ where: { teamId: t.id } })
-      withCounts.push({
-        id: t.id,
-        name: t.name,
-        league: t.league,
-        gameCount: homeGames + awayGames,
-        playerCount: players,
-      })
+    // 2. Group by normalised name
+    const byName = new Map<string, typeof allTeams>()
+    for (const t of allTeams) {
+      const key = t.name.trim().toLowerCase()
+      if (!byName.has(key)) byName.set(key, [])
+      byName.get(key)!.push(t)
     }
-    // Sort by game count descending — the winner (most games) goes first
-    withCounts.sort((a, b) => b.gameCount - a.gameCount || b.playerCount - a.playerCount)
-    dupes[name] = withCounts
-  }
 
-  return dupes
-}
+    const results: string[] = []
+    let merged = 0
 
-async function mergeAllDuplicates(): Promise<string[]> {
-  const results: string[] = []
-  const duplicates = await findDuplicates()
+    for (const [, group] of byName) {
+      if (group.length < 2) continue
 
-  for (const [name, teams] of Object.entries(duplicates)) {
-    const winner = teams[0]  // most games
-    const losers = teams.slice(1)
-
-    for (const loser of losers) {
-      try {
-        // 1. Reassign home games
-        const hg = await prisma.game.updateMany({
-          where: { homeTeamId: loser.id },
-          data: { homeTeamId: winner.id },
+      // 3. Pick canonical: most games (home + away), tie-break by most players
+      const withCounts = await Promise.all(
+        group.map(async (t) => {
+          const homeGames = await prisma.game.count({ where: { homeTeamId: t.id } })
+          const awayGames = await prisma.game.count({ where: { awayTeamId: t.id } })
+          const players = await prisma.player.count({ where: { teamId: t.id } })
+          return { ...t, gameCount: homeGames + awayGames, playerCount: players }
         })
-        // 2. Reassign away games
-        const ag = await prisma.game.updateMany({
-          where: { awayTeamId: loser.id },
-          data: { awayTeamId: winner.id },
-        })
-        // 3. Reassign players
-        const pl = await prisma.player.updateMany({
-          where: { teamId: loser.id },
-          data: { teamId: winner.id },
-        })
-        // 4. Reassign player stats
-        const st = await prisma.playerGameStat.updateMany({
-          where: { teamId: loser.id },
-          data: { teamId: winner.id },
-        })
-        // 5. Delete the duplicate team
-        await prisma.team.delete({ where: { id: loser.id } })
+      )
 
-        results.push(
-          `✓ Merged "${name}" (${loser.id} → ${winner.id}): ` +
-          `${hg.count + ag.count} games, ${pl.count} players, ${st.count} stats reassigned`
-        )
-      } catch (e: any) {
-        results.push(`✗ Failed merging "${name}" loser ${loser.id}: ${e.message}`)
+      withCounts.sort(
+        (a, b) => b.gameCount - a.gameCount || b.playerCount - a.playerCount
+      )
+
+      const canonical = withCounts[0]
+      const dupes = withCounts.slice(1)
+
+      for (const dupe of dupes) {
+        try {
+          // 4a. Re-point Players
+          await (prisma as unknown as { $executeRawUnsafe: (...args: unknown[]) => Promise<number> })
+            .$executeRawUnsafe(
+              `UPDATE "Player" SET "teamId" = ? WHERE "teamId" = ?`,
+              canonical.id,
+              dupe.id
+            )
+
+          // 4b. Re-point Game.homeTeamId
+          await (prisma as unknown as { $executeRawUnsafe: (...args: unknown[]) => Promise<number> })
+            .$executeRawUnsafe(
+              `UPDATE "Game" SET "homeTeamId" = ? WHERE "homeTeamId" = ?`,
+              canonical.id,
+              dupe.id
+            )
+
+          // 4c. Re-point Game.awayTeamId
+          await (prisma as unknown as { $executeRawUnsafe: (...args: unknown[]) => Promise<number> })
+            .$executeRawUnsafe(
+              `UPDATE "Game" SET "awayTeamId" = ? WHERE "awayTeamId" = ?`,
+              canonical.id,
+              dupe.id
+            )
+
+          // 4d. Re-point PlayerGameStat.teamId
+          await (prisma as unknown as { $executeRawUnsafe: (...args: unknown[]) => Promise<number> })
+            .$executeRawUnsafe(
+              `UPDATE "PlayerGameStat" SET "teamId" = ? WHERE "teamId" = ?`,
+              canonical.id,
+              dupe.id
+            )
+
+          // 4e. Update season_teams SiteSetting
+          const setting = await prisma.siteSetting.findUnique({
+            where: { key: 'season_teams' },
+          })
+          if (setting) {
+            const seasonTeams = JSON.parse(setting.value) as Record<string, string[]>
+            let changed = false
+            for (const season of Object.keys(seasonTeams)) {
+              const ids = seasonTeams[season]
+              const idx = ids.indexOf(dupe.id)
+              if (idx !== -1) {
+                // Replace dupe with canonical only if canonical isn't already present
+                if (!ids.includes(canonical.id)) {
+                  ids[idx] = canonical.id
+                } else {
+                  ids.splice(idx, 1)
+                }
+                changed = true
+              }
+            }
+            if (changed) {
+              await prisma.siteSetting.update({
+                where: { key: 'season_teams' },
+                data: { value: JSON.stringify(seasonTeams) },
+              })
+            }
+          }
+
+          // 4f. Delete the duplicate team
+          await prisma.team.delete({ where: { id: dupe.id } })
+
+          merged++
+          results.push(
+            `merged "${dupe.name}" (${dupe.id} → ${canonical.id}): ` +
+            `${dupe.gameCount} games, ${dupe.playerCount} players reassigned`
+          )
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e)
+          results.push(`failed "${dupe.name}" (${dupe.id}): ${msg.slice(0, 120)}`)
+        }
       }
     }
-  }
 
-  if (results.length === 0) results.push('No duplicate teams found — nothing to merge.')
-  return results
+    if (results.length === 0) {
+      results.push('No duplicate teams found — nothing to merge.')
+    }
+
+    return NextResponse.json({ ok: true, merged, results })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
