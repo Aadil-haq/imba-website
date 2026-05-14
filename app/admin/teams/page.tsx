@@ -165,17 +165,49 @@ export default function AdminTeamsPage() {
     setEditTeamSaving(false)
   }
 
+  const resizeImage = (file: File, maxDim = 500): Promise<File> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onerror = reject
+      reader.onload = e => {
+        const img = new Image()
+        img.onerror = reject
+        img.onload = () => {
+          const ratio = Math.min(maxDim / img.width, maxDim / img.height, 1)
+          const w = Math.round(img.width * ratio)
+          const h = Math.round(img.height * ratio)
+          const canvas = document.createElement('canvas')
+          canvas.width = w; canvas.height = h
+          canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+          canvas.toBlob(blob => {
+            if (!blob) { reject(new Error('Canvas toBlob failed')); return }
+            resolve(new File([blob], 'logo.jpg', { type: 'image/jpeg' }))
+          }, 'image/jpeg', 0.88)
+        }
+        img.src = e.target!.result as string
+      }
+      reader.readAsDataURL(file)
+    })
+
   const uploadLogo = async (teamId: string, file: File) => {
     setUploadingLogo(teamId)
-    const fd = new FormData()
-    fd.append('file', file); fd.append('teamId', teamId)
-    const res = await fetch('/api/admin/upload-logo', { method: 'POST', body: fd })
-    if (res.ok) {
-      const { url } = await res.json()
-      setTeamsInSeason(prev => prev.map(t => t.id === teamId ? { ...t, logo: url } : t))
-      setAllTeams(prev => prev.map(t => t.id === teamId ? { ...t, logo: url } : t))
-      showMsg('Logo uploaded!')
-    } else showMsg('Upload failed', 'err')
+    try {
+      const resized = await resizeImage(file)
+      const fd = new FormData()
+      fd.append('file', resized); fd.append('teamId', teamId)
+      const res = await fetch('/api/admin/upload-logo', { method: 'POST', body: fd })
+      if (res.ok) {
+        const { url } = await res.json()
+        setTeamsInSeason(prev => prev.map(t => t.id === teamId ? { ...t, logo: url } : t))
+        setAllTeams(prev => prev.map(t => t.id === teamId ? { ...t, logo: url } : t))
+        showMsg('Logo uploaded!')
+      } else {
+        const err = await res.json().catch(() => ({}))
+        showMsg(err.error || 'Upload failed', 'err')
+      }
+    } catch (e) {
+      showMsg('Upload failed', 'err')
+    }
     setUploadingLogo(null)
   }
 

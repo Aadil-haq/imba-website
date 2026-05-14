@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { checkAdminAuth } from '@/lib/auth'
 
-const MAX_BYTES = 2 * 1024 * 1024 // 2 MB
+const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 
 export async function POST(request: Request) {
   if (!checkAdminAuth(request)) {
