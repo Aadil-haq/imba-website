@@ -28,12 +28,12 @@ export async function GET(
             awayTeamId: true,
             homeScore: true,
             awayScore: true,
-            homeTeam: { select: { name: true, color: true, slug: true } },
-            awayTeam: { select: { name: true, color: true, slug: true } },
+            homeTeam: { select: { name: true, color: true, slug: true, logo: true } },
+            awayTeam: { select: { name: true, color: true, slug: true, logo: true } },
             played: true,
           },
         },
-        team: { select: { id: true, name: true, color: true, slug: true } },
+        team: { select: { id: true, name: true, color: true, slug: true, logo: true } },
       },
       orderBy: { game: { date: 'desc' } },
     })
@@ -43,13 +43,13 @@ export async function GET(
     // Season breakdown grouped by season + league + team
     const seasonMap = new Map<string, {
       season: string; league: string
-      teamId: string; teamName: string; teamColor: string; teamSlug: string
+      teamId: string; teamName: string; teamColor: string; teamSlug: string; teamLogo: string | null
       gamesPlayed: number
       points: number; rebounds: number; assists: number; steals: number; blocks: number; turnovers: number
       twoPtMade: number; twoPtAtt: number; threeMade: number; threeAtt: number; ftMade: number; ftAtt: number
     }>()
 
-    const teamsMap = new Map<string, { id: string; name: string; color: string; slug: string; seasons: Set<string> }>()
+    const teamsMap = new Map<string, { id: string; name: string; color: string; slug: string; logo: string | null; seasons: Set<string> }>()
 
     for (const stat of playedStats) {
       const key = `${stat.game.season}__${stat.game.league}__${stat.teamId}`
@@ -61,6 +61,7 @@ export async function GET(
           teamName: stat.team.name,
           teamColor: stat.team.color,
           teamSlug: stat.team.slug,
+          teamLogo: (stat.team as any).logo ?? null,
           gamesPlayed: 0,
           points: 0, rebounds: 0, assists: 0, steals: 0, blocks: 0, turnovers: 0,
           twoPtMade: 0, twoPtAtt: 0, threeMade: 0, threeAtt: 0, ftMade: 0, ftAtt: 0,
@@ -75,7 +76,7 @@ export async function GET(
       s.ftMade += stat.ftMade; s.ftAtt += stat.ftAtt
 
       if (!teamsMap.has(stat.teamId)) {
-        teamsMap.set(stat.teamId, { id: stat.teamId, name: stat.team.name, color: stat.team.color, slug: stat.team.slug, seasons: new Set() })
+        teamsMap.set(stat.teamId, { id: stat.teamId, name: stat.team.name, color: stat.team.color, slug: stat.team.slug, logo: (stat.team as any).logo ?? null, seasons: new Set() })
       }
       teamsMap.get(stat.teamId)!.seasons.add(stat.game.season)
     }
@@ -102,7 +103,7 @@ export async function GET(
       })
 
     const teamsHistory = [...teamsMap.values()].map(t => ({
-      id: t.id, name: t.name, color: t.color, slug: t.slug,
+      id: t.id, name: t.name, color: t.color, slug: t.slug, logo: t.logo,
       seasons: [...t.seasons].sort((a, b) => b.localeCompare(a)),
     }))
 
@@ -153,8 +154,10 @@ export async function GET(
         league: stat.game.league,
         teamName: stat.team.name,
         teamColor: stat.team.color,
+        teamLogo: (stat.team as any).logo ?? null,
         oppName: opp.name,
         oppColor: opp.color,
+        oppLogo: (opp as any).logo ?? null,
         result: myScore !== null && oppScore !== null ? (myScore > oppScore ? 'W' : 'L') : null,
         myScore, oppScore,
         points: stat.points, rebounds: stat.rebounds, assists: stat.assists,
@@ -172,7 +175,7 @@ export async function GET(
       name: player.name,
       number: player.number,
       position: player.position,
-      currentTeam: { id: player.team.id, name: player.team.name, color: player.team.color, slug: player.team.slug },
+      currentTeam: { id: player.team.id, name: player.team.name, color: player.team.color, slug: player.team.slug, logo: (player.team as any).logo ?? null },
       teamsHistory,
       careerStats,
       seasonStats,

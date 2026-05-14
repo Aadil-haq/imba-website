@@ -179,10 +179,12 @@ export default function AdminTeamsPage() {
           const canvas = document.createElement('canvas')
           canvas.width = w; canvas.height = h
           canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+          const isPng = file.type === 'image/png'
+          const outType = isPng ? 'image/png' : 'image/jpeg'
           canvas.toBlob(blob => {
             if (!blob) { reject(new Error('Canvas toBlob failed')); return }
-            resolve(new File([blob], 'logo.jpg', { type: 'image/jpeg' }))
-          }, 'image/jpeg', 0.88)
+            resolve(new File([blob], isPng ? 'logo.png' : 'logo.jpg', { type: outType }))
+          }, outType, isPng ? undefined : 0.88)
         }
         img.src = e.target!.result as string
       }

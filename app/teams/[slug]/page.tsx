@@ -19,8 +19,8 @@ interface Player {
 
 interface Game {
   id: string
-  homeTeam: { name: string; color: string }
-  awayTeam: { name: string; color: string }
+  homeTeam: { name: string; color: string; logo?: string | null }
+  awayTeam: { name: string; color: string; logo?: string | null }
   homeScore: number | null
   awayScore: number | null
   date: string
@@ -45,6 +45,7 @@ interface TeamDetail {
   name: string
   slug: string
   color: string
+  logo?: string | null
   wins: number
   losses: number
   pointsFor: number
@@ -126,16 +127,19 @@ export default function TeamPage() {
             ← All Teams
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-            <div style={{
-              width: '80px', height: '80px',
-              backgroundColor: team.color,
-              borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '32px', fontWeight: 900, color: '#fff',
-              flexShrink: 0,
-            }}>
-              {team.name[0]}
-            </div>
+            {team.logo
+              ? <img src={team.logo} alt={team.name} style={{ width: '80px', height: '80px', objectFit: 'contain', flexShrink: 0 }} />
+              : <div style={{
+                  width: '80px', height: '80px',
+                  backgroundColor: team.color,
+                  borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '32px', fontWeight: 900, color: '#fff',
+                  flexShrink: 0,
+                }}>
+                  {team.name[0]}
+                </div>
+            }
             <div>
               <h1 style={{ color: '#fff', fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 900, marginBottom: '6px' }}>
                 {team.name}
@@ -254,9 +258,13 @@ export default function TeamPage() {
                       borderRadius: '8px', padding: '12px 16px',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}>
-                      <div>
-                        <span style={{ color: won ? '#27AE60' : '#e74c3c', fontWeight: 700, fontSize: '12px', marginRight: '8px' }}>{won ? 'W' : 'L'}</span>
-                        <span style={{ color: '#ccc', fontSize: '14px' }}>vs {opp.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: won ? '#27AE60' : '#e74c3c', fontWeight: 700, fontSize: '12px' }}>{won ? 'W' : 'L'}</span>
+                        {opp.logo
+                          ? <img src={opp.logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', flexShrink: 0 }} />
+                          : <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: opp.color, flexShrink: 0, display: 'inline-block' }} />
+                        }
+                        <span style={{ color: '#ccc', fontSize: '14px' }}>{opp.name}</span>
                       </div>
                       <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>
                         {teamScore}–{oppScore}
@@ -284,9 +292,13 @@ export default function TeamPage() {
                       backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '12px 16px',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}>
-                      <div>
-                        <span style={{ color: '#888', fontWeight: 700, fontSize: '12px', marginRight: '8px' }}>{game.isHome ? 'HOME' : 'AWAY'}</span>
-                        <span style={{ color: '#ccc', fontSize: '14px' }}>vs {opp.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#888', fontWeight: 700, fontSize: '12px' }}>{game.isHome ? 'HOME' : 'AWAY'}</span>
+                        {opp.logo
+                          ? <img src={opp.logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', flexShrink: 0 }} />
+                          : <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: opp.color, flexShrink: 0, display: 'inline-block' }} />
+                        }
+                        <span style={{ color: '#ccc', fontSize: '14px' }}>{opp.name}</span>
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ color: '#4A9FE3', fontSize: '13px', fontWeight: 600 }}>
