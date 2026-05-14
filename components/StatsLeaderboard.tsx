@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 
 type StatKey = 'ppg' | 'rpg' | 'apg'
 
@@ -111,7 +112,9 @@ export default function StatsLeaderboard({ seasons, defaultSeason }: Props) {
             }}>
               <span style={{ color: i === 0 ? '#4A9FE3' : '#333', fontWeight: 700, fontSize: '14px', width: '20px', flexShrink: 0 }}>{i + 1}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>{leader.playerName}</div>
+                <Link href={`/players/${leader.playerId}`} style={{ color: '#4A9FE3', fontWeight: 700, fontSize: '14px', textDecoration: 'none', cursor: 'pointer' }}>
+                  {leader.playerName}
+                </Link>
                 <div style={{ color: '#444', fontSize: '11px' }}>{leader.teamName}</div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>

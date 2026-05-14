@@ -208,7 +208,11 @@ export default function TeamPage() {
                     {team.players.map((player, i) => (
                       <tr key={player.id} style={{ backgroundColor: i % 2 === 0 ? '#1a1a1a' : '#141414', borderBottom: '1px solid #222' }}>
                         <td style={{ padding: '12px 14px', textAlign: 'center', color: team.color, fontWeight: 800, fontSize: '14px' }}>{player.number}</td>
-                        <td style={{ padding: '12px 14px', color: '#fff', fontWeight: 600, fontSize: '14px' }}>{player.name}</td>
+                        <td style={{ padding: '12px 14px', fontWeight: 600, fontSize: '14px' }}>
+                          <Link href={`/players/${player.id}`} style={{ color: '#4A9FE3', textDecoration: 'none', cursor: 'pointer' }}>
+                            {player.name}
+                          </Link>
+                        </td>
                         <td style={{ padding: '12px 14px', textAlign: 'center', color: '#888', fontSize: '13px' }}>
                           <span style={{ backgroundColor: '#2a2a2a', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>{player.position}</span>
                         </td>

@@ -142,7 +142,9 @@ export default function TopScorersWidget() {
                 {i + 1}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.playerName}</div>
+                <Link href={`/players/${p.playerId}`} style={{ color: '#4A9FE3', fontWeight: 700, fontSize: '14px', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                  {p.playerName}
+                </Link>
                 <div style={{ color: '#555', fontSize: '11px' }}>{p.teamName} · {p.gamesPlayed} GP</div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>

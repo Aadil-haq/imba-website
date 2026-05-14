@@ -290,9 +290,9 @@ function StatsPageContent() {
                       <tr key={p.playerId} style={{ backgroundColor: i % 2 === 0 ? '#1a1a1a' : '#141414', borderBottom: '1px solid #222' }}>
                         <td style={{ padding: '14px 16px', fontWeight: 700, fontSize: '14px', color: rankColor(i) }}>#{i + 1}</td>
                         <td style={{ padding: '14px 16px' }}>
-                          <div style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>
+                          <Link href={`/players/${p.playerId}`} style={{ color: '#4A9FE3', fontWeight: 700, fontSize: '15px', textDecoration: 'none', cursor: 'pointer' }}>
                             {p.playerNumber != null ? `#${p.playerNumber} ` : ''}{p.playerName}
-                          </div>
+                          </Link>
                         </td>
                         <td style={{ padding: '14px 16px' }}>
                           <Link href={`/teams/${p.teamSlug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -371,7 +371,9 @@ function StatsPageContent() {
                         const active = sortCol === col.key
                         if (col.key === 'playerName') return (
                           <td key={col.key} style={{ padding: '10px 12px', whiteSpace: 'nowrap', backgroundColor: active ? 'rgba(74,159,227,0.06)' : undefined }}>
-                            <span style={{ color: '#fff', fontWeight: 700 }}>{val}</span>
+                            <Link href={`/players/${p.playerId}`} style={{ color: '#4A9FE3', fontWeight: 700, textDecoration: 'none', cursor: 'pointer' }}>
+                              {val}
+                            </Link>
                           </td>
                         )
                         if (col.key === 'teamName') return (
