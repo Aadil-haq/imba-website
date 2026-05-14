@@ -21,7 +21,8 @@ interface Props {
 }
 
 export default function StandingsWidget({ seasons, defaultSeason }: Props) {
-  const [season, setSeason] = useState(defaultSeason)
+  const initial = seasons.includes(defaultSeason) ? defaultSeason : (seasons[0] ?? '')
+  const [season, setSeason] = useState(initial)
   const [rows, setRows] = useState<TeamRow[]>([])
   const [loading, setLoading] = useState(true)
 

@@ -99,7 +99,9 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
                 <tr key={s.id} style={{ borderBottom: '1px solid #1a1a1a', backgroundColor: i % 2 === 0 ? 'transparent' : '#0d0d0d' }}>
                   <td style={{ padding: '10px 14px', color: '#555', fontSize: '12px' }}>{s.player.number ?? '—'}</td>
                   <td style={{ padding: '10px 14px' }}>
-                    <span style={{ color: '#ddd', fontSize: '13px', fontWeight: 600 }}>{s.player.name}</span>
+                    <Link href={`/players/${s.player.id}`} style={{ color: '#4A9FE3', fontSize: '13px', fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}>
+                      {s.player.name}
+                    </Link>
                   </td>
                   <td style={{ padding: '10px', textAlign: 'center', color: '#fff', fontWeight: 700, fontSize: '13px' }}>{s.points ?? 0}</td>
                   <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.rebounds ?? 0}</td>

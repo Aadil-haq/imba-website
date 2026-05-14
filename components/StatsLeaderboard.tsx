@@ -29,7 +29,8 @@ const STAT_LABELS: Record<StatKey, string> = {
 
 export default function StatsLeaderboard({ seasons, defaultSeason }: Props) {
   const [stat, setStat] = useState<StatKey>('ppg')
-  const [season, setSeason] = useState<string>(defaultSeason ?? seasons[0] ?? '')
+  const initial = defaultSeason && seasons.includes(defaultSeason) ? defaultSeason : (seasons[0] ?? '')
+  const [season, setSeason] = useState<string>(initial)
   const [leaders, setLeaders] = useState<Leader[]>([])
   const [loading, setLoading] = useState(true)
 
