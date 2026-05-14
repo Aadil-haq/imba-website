@@ -152,9 +152,6 @@ function PlayerProfile() {
             {statCard('APG', c.apg)}
             {statCard('SPG', c.spg)}
             {statCard('BPG', c.bpg)}
-            {statCard('FG%', fmtPct(c.fgPct))}
-            {statCard('3P%', fmtPct(c.threePct))}
-            {statCard('FT%', fmtPct(c.ftPct))}
             {statCard('GP', c.gamesPlayed)}
           </div>
         </div>
@@ -217,16 +214,16 @@ function PlayerProfile() {
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#888' }}>{s.gamesPlayed}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#888' }}>{s.twoPtMade}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#555' }}>{s.twoPtAtt}</td>
-                      <td style={{ padding: '11px 10px', textAlign: 'center', color: '#bbb' }}>{fmtPct(s.twoPtPct)}</td>
+                      <td style={{ padding: '11px 10px', textAlign: 'center', color: '#bbb' }}>{s.twoPtAtt > 0 ? fmtPct(s.twoPtPct) : ''}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#888' }}>{s.threeMade}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#555' }}>{s.threeAtt}</td>
-                      <td style={{ padding: '11px 10px', textAlign: 'center', color: '#bbb' }}>{fmtPct(s.threePct)}</td>
+                      <td style={{ padding: '11px 10px', textAlign: 'center', color: '#bbb' }}>{s.threeAtt > 0 ? fmtPct(s.threePct) : ''}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#888' }}>{s.fgMade}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#555' }}>{s.fgAtt}</td>
-                      <td style={{ padding: '11px 10px', textAlign: 'center', color: '#bbb' }}>{fmtPct(s.fgPct)}</td>
+                      <td style={{ padding: '11px 10px', textAlign: 'center', color: '#bbb' }}>{s.fgAtt > 0 ? fmtPct(s.fgPct) : ''}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#888' }}>{s.ftMade}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#555' }}>{s.ftAtt}</td>
-                      <td style={{ padding: '11px 10px', textAlign: 'center', color: '#bbb' }}>{fmtPct(s.ftPct)}</td>
+                      <td style={{ padding: '11px 10px', textAlign: 'center', color: '#bbb' }}>{s.ftAtt > 0 ? fmtPct(s.ftPct) : ''}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#ccc' }}>{s.points}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 700 }}>{s.ppg}</td>
                       <td style={{ padding: '11px 10px', textAlign: 'center', color: '#ccc' }}>{s.rebounds}</td>
@@ -254,10 +251,10 @@ function PlayerProfile() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {[
                   ['Points', c.points, c.ppg + '/G'],
-                  ['2-Pointers', `${c.twoPtMade}/${c.twoPtAtt}`, fmtPct(c.twoPtPct)],
-                  ['3-Pointers', `${c.threeMade}/${c.threeAtt}`, fmtPct(c.threePct)],
-                  ['Field Goals', `${c.fgMade}/${c.fgAtt}`, fmtPct(c.fgPct)],
-                  ['Free Throws', `${c.ftMade}/${c.ftAtt}`, fmtPct(c.ftPct)],
+                  ['2-Pointers', `${c.twoPtMade}/${c.twoPtAtt}`, ''],
+                  ['3-Pointers', `${c.threeMade}/${c.threeAtt}`, ''],
+                  ['Field Goals', `${c.fgMade}/${c.fgAtt}`, ''],
+                  ['Free Throws', `${c.ftMade}/${c.ftAtt}`, ''],
                 ].map(([label, val, sub]) => (
                   <div key={String(label)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid #222' }}>
                     <span style={{ color: '#888', fontSize: '13px' }}>{label}</span>
