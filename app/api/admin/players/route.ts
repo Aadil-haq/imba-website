@@ -115,7 +115,7 @@ export async function PATCH(request: Request) {
         ...(number !== undefined && { number: parseInt(number) || 0 }),
         ...(position !== undefined && { position }),
         ...(teamId !== undefined && { teamId }),
-        ...(season !== undefined && { season }),
+        ...('season' in body && { season: season ?? null }),
       },
       include: { team: true },
     })

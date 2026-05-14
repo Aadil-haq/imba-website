@@ -242,9 +242,13 @@ export default function AdminTeamsPage() {
     setEditSaving(false)
   }
 
-  const deletePlayer = async (id: string) => {
-    if (!confirm('Remove this player? All their stats will also be removed.')) return
-    await fetch(`/api/admin/players?id=${id}`, { method: 'DELETE', headers: { Authorization: 'Bearer imba-admin-2025' } })
+  const removeFromRoster = async (id: string, name: string) => {
+    if (!confirm(`Remove ${name} from this roster?\n\nTheir player record and all stats are kept — they are just removed from this season's roster.`)) return
+    await fetch('/api/admin/players', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer imba-admin-2025' },
+      body: JSON.stringify({ id, season: null }),
+    })
     reloadPlayers()
   }
 
@@ -566,7 +570,7 @@ export default function AdminTeamsPage() {
                                   style={{ backgroundColor: '#1a3a5c', color: '#4A9FE3', border: 'none', borderRadius: '4px', padding: '3px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
                                 >Edit</button>
                                 <button
-                                  onClick={() => deletePlayer(p.id)}
+                                  onClick={() => removeFromRoster(p.id, p.name)}
                                   style={{ backgroundColor: '#3a1a1a', color: '#e74c3c', border: 'none', borderRadius: '4px', padding: '3px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
                                 >✕</button>
                               </div>
