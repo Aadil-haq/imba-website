@@ -131,7 +131,7 @@ function PlayerProfile() {
                       padding: '4px 10px', borderRadius: '999px',
                     }}>
                       {t.logo
-                        ? <img src={t.logo} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', flexShrink: 0 }} />
+                        ? <img src={t.logo} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
                         : <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: t.color, flexShrink: 0 }} />
                       }
                       {t.name}
@@ -211,7 +211,7 @@ function PlayerProfile() {
                       <td style={{ padding: '11px 10px', whiteSpace: 'nowrap' }}>
                         <Link href={`/teams/${s.teamSlug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {s.teamLogo
-                            ? <img src={s.teamLogo} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', flexShrink: 0 }} />
+                            ? <img src={s.teamLogo} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
                             : <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: s.teamColor, flexShrink: 0 }} />
                           }
                           <span style={{ color: '#aaa', fontSize: '12px' }}>{s.teamName}</span>
@@ -305,7 +305,7 @@ function PlayerProfile() {
                     <Link key={t.id} href={`/teams/${t.slug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #222' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         {t.logo
-                          ? <img src={t.logo} alt="" style={{ width: '32px', height: '32px', objectFit: 'contain', flexShrink: 0 }} />
+                          ? <img src={t.logo} alt="" style={{ width: '32px', height: '32px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
                           : <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: t.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 900, color: '#fff', flexShrink: 0 }}>{t.name[0]}</div>
                         }
                         <span style={{ color: '#ccc', fontWeight: 600, fontSize: '14px' }}>{t.name}</span>
@@ -347,7 +347,7 @@ function PlayerProfile() {
                       <td style={{ padding: '11px 10px', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           {game.teamLogo
-                            ? <img src={game.teamLogo} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', flexShrink: 0 }} />
+                            ? <img src={game.teamLogo} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
                             : <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: game.teamColor, flexShrink: 0 }} />
                           }
                           <span style={{ color: '#aaa', fontSize: '12px' }}>{game.teamName}</span>
@@ -356,7 +356,7 @@ function PlayerProfile() {
                       <td style={{ padding: '11px 10px', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           {game.oppLogo
-                            ? <img src={game.oppLogo} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', flexShrink: 0 }} />
+                            ? <img src={game.oppLogo} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
                             : <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: game.oppColor, flexShrink: 0 }} />
                           }
                           <span style={{ color: '#666', fontSize: '12px' }}>{game.oppName}</span>

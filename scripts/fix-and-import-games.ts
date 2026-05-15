@@ -22,20 +22,12 @@ const LEAGUE_ID = '65672'
 
 // Games to fix: overwrite scores + re-import stats
 const FIXES = [
-  { gameId: '1824589', season: 'D2 2025-26 Winter', league: 'Rec' },
-  { gameId: '1824863', season: 'D1 2025-26 Winter', league: 'Comp' },
-  { gameId: '1824866', season: 'D1 2025-26 Winter', league: 'Comp' },
+  // D1 Jan 4: ATX @ Pool Party — DB has wrong score (46-49, which is the Feb 15 finals score); actual is 46-72 per MSO
+  { gameId: '1826049', season: 'D1 2025-26 Winter', league: 'Comp' },
 ]
 
 // Games to add (missing entirely)
-const MISSING = [
-  { gameId: '1847197', season: 'D1 2025-26 Winter', league: 'Comp' },
-  { gameId: '1847199', season: 'D1 2025-26 Winter', league: 'Comp' },
-  { gameId: '1847200', season: 'D1 2025-26 Winter', league: 'Comp' },
-  { gameId: '1853743', season: 'D1 2025-26 Winter', league: 'Comp' },
-  { gameId: '1853744', season: 'D1 2025-26 Winter', league: 'Comp' },
-  { gameId: '1856291', season: 'D1 2025-26 Winter', league: 'Comp' },
-]
+const MISSING: { gameId: string; season: string; league: string }[] = []
 
 function fetchUrl(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -104,14 +96,24 @@ function parseBoxScore(html: string) {
       while ((tdM = tdRe.exec(row)) !== null) tds.push(tdM[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim())
       if (tds.length < 17) continue
       stats.push({
-        playerName, playerId, jerseyNumber, position: tds[0] || 'G',
-        twoPtMade: parseInt0(tds[1]), twoPtAtt: parseInt0(tds[2]),
-        threeMade: parseInt0(tds[4]), threeAtt: parseInt0(tds[5]),
-        ftMade: parseInt0(tds[10]), ftAtt: parseInt0(tds[11]),
-        points: parseInt0(tds[13]), assists: parseInt0(tds[14]),
-        rebounds: parseInt0(tds[16]),
-        steals: tds.length > 17 ? parseInt0(tds[17]) : 0,
-        blocks: tds.length > 18 ? parseInt0(tds[18]) : 0,
+        playerName, playerId, jerseyNumber,
+        // Some box scores omit the position column (19 cols vs 20).
+        // When 20 cols: tds[0]=pos, tds[1]=2PM, ... tds[13]=PTS, tds[16]=REB ...
+        // When 19 cols: tds[0]=2PM (no position col), shift all indices by -1
+        ...((): object => {
+          const o = tds.length >= 20 ? 1 : 0 // offset: 1 if position col present
+          return {
+            position: o ? (tds[0] || 'G') : 'G',
+            twoPtMade: parseInt0(tds[o]),     twoPtAtt: parseInt0(tds[o + 1]),
+            threeMade: parseInt0(tds[o + 3]), threeAtt: parseInt0(tds[o + 4]),
+            ftMade:    parseInt0(tds[o + 9]), ftAtt:    parseInt0(tds[o + 10]),
+            points:    parseInt0(tds[o + 12]), assists: parseInt0(tds[o + 13]),
+            rebounds:  parseInt0(tds[o + 15]),
+            steals: tds.length > o + 16 ? parseInt0(tds[o + 16]) : 0,
+            blocks: tds.length > o + 17 ? parseInt0(tds[o + 17]) : 0,
+            fouls:  tds.length > o + 18 ? parseInt0(tds[o + 18]) : 0,
+          }
+        })(),
       })
     }
     return stats
@@ -159,7 +161,7 @@ async function upsertStats(gameDbId: string, awayTeamId: string, homeTeamId: str
         threeMade: ps.threeMade, threeAtt: ps.threeAtt,
         ftMade: ps.ftMade, ftAtt: ps.ftAtt,
         points: ps.points, assists: ps.assists, rebounds: ps.rebounds,
-        steals: ps.steals, blocks: ps.blocks, turnovers: 0,
+        steals: ps.steals, blocks: ps.blocks, turnovers: 0, fouls: ps.fouls ?? 0,
       }
       const existing = await prisma.playerGameStat.findUnique({ where: { playerId_gameId: { playerId, gameId: gameDbId } } })
       if (!existing) await prisma.playerGameStat.create({ data: { playerId, gameId: gameDbId, teamId, ...statData } })

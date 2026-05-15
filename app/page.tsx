@@ -114,7 +114,7 @@ export default async function HomePage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     {(game.homeTeam as any).logo
-                      ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '14px', height: '14px', objectFit: 'contain' }} />
+                      ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '14px', height: '14px', objectFit: 'contain', borderRadius: '50%' }} />
                       : <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: game.homeTeam.color, flexShrink: 0 }} />
                     }
                     <span style={{ color: homeWon ? '#fff' : '#666', fontSize: '11px', fontWeight: homeWon ? 700 : 400 }}>{abbrev(game.homeTeam.name)}</span>
@@ -126,7 +126,7 @@ export default async function HomePage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     {(game.awayTeam as any).logo
-                      ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '14px', height: '14px', objectFit: 'contain' }} />
+                      ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '14px', height: '14px', objectFit: 'contain', borderRadius: '50%' }} />
                       : <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: game.awayTeam.color, flexShrink: 0 }} />
                     }
                     <span style={{ color: awayWon ? '#fff' : '#666', fontSize: '11px', fontWeight: awayWon ? 700 : 400 }}>{abbrev(game.awayTeam.name)}</span>
@@ -225,7 +225,7 @@ export default async function HomePage() {
                         <td style={{ padding: '11px 14px' }}>
                           <Link href={`/teams/${team.slug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '7px' }}>
                             {team.logo
-                              ? <img src={team.logo} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '2px' }} />
+                              ? <img src={team.logo} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '50%' }} />
                               : <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: team.color }} />
                             }
                             <span style={{ color: '#ddd', fontSize: '13px', fontWeight: 600 }}>{team.name}</span>
@@ -271,7 +271,7 @@ export default async function HomePage() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           {(game.awayTeam as any).logo
-                            ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '3px' }} />
+                            ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%' }} />
                             : <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: game.awayTeam.color, flexShrink: 0 }} />
                           }
                           <span style={{ color: awayWon ? '#fff' : '#555', fontSize: '13px', fontWeight: awayWon ? 700 : 500 }}>{game.awayTeam.name}</span>
@@ -282,7 +282,7 @@ export default async function HomePage() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           {(game.homeTeam as any).logo
-                            ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '3px' }} />
+                            ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%' }} />
                             : <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: game.homeTeam.color, flexShrink: 0 }} />
                           }
                           <span style={{ color: homeWon ? '#fff' : '#555', fontSize: '13px', fontWeight: homeWon ? 700 : 500 }}>{game.homeTeam.name}</span>
@@ -373,7 +373,7 @@ export default async function HomePage() {
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                       {(game.awayTeam as any).logo
-                        ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                        ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%' }} />
                         : <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: game.awayTeam.color }} />
                       }
                       <span style={{ color: '#ccc', fontWeight: 700, fontSize: '14px' }}>{game.awayTeam.name}</span>
@@ -381,7 +381,7 @@ export default async function HomePage() {
                     <span style={{ color: '#333', fontWeight: 700, fontSize: '12px' }}>@</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                       {(game.homeTeam as any).logo
-                        ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                        ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%' }} />
                         : <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: game.homeTeam.color }} />
                       }
                       <span style={{ color: '#ccc', fontWeight: 700, fontSize: '14px' }}>{game.homeTeam.name}</span>

@@ -166,7 +166,7 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
               <Link href={`/teams/${game.awayTeam.slug}`} style={{ textDecoration: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '8px' }}>
                   {(game.awayTeam as any).logo
-                    ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', flexShrink: 0 }} />
+                    ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
                     : <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: game.awayTeam.color, flexShrink: 0 }} />
                   }
                   <span style={{ color: awayWon ? '#fff' : '#888', fontWeight: 700, fontSize: 'clamp(13px, 3.5vw, 18px)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.awayTeam.name}</span>
@@ -191,7 +191,7 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
               <Link href={`/teams/${game.homeTeam.slug}`} style={{ textDecoration: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '8px' }}>
                   {(game.homeTeam as any).logo
-                    ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', flexShrink: 0 }} />
+                    ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
                     : <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: game.homeTeam.color, flexShrink: 0 }} />
                   }
                   <span style={{ color: homeWon ? '#fff' : '#888', fontWeight: 700, fontSize: 'clamp(13px, 3.5vw, 18px)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.homeTeam.name}</span>
