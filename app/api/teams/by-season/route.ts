@@ -134,6 +134,7 @@ export async function GET() {
           name: team.name,
           slug: team.slug,
           color: team.color,
+          logo: (team as any).logo ?? null,
           wins,
           losses,
           playerCount: seasonPlayerCounts[team.id] ?? 0,

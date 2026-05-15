@@ -9,6 +9,7 @@ interface TeamEntry {
   name: string
   slug: string
   color: string
+  logo?: string | null
   wins: number
   losses: number
   playerCount: number
@@ -209,9 +210,10 @@ function TeamsPageContent() {
                         <div style={{ padding: '16px' }}>
                           {/* Name row */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                            <div style={{ width: '38px', height: '38px', backgroundColor: team.color, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '16px', color: '#fff', flexShrink: 0 }}>
-                              {team.name[0]}
-                            </div>
+                            {team.logo
+                              ? <img src={team.logo} alt="" style={{ width: '38px', height: '38px', objectFit: 'contain', flexShrink: 0 }} />
+                              : <div style={{ width: '38px', height: '38px', backgroundColor: team.color, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '16px', color: '#fff', flexShrink: 0 }}>{team.name[0]}</div>
+                            }
                             <div style={{ color: '#fff', fontWeight: 800, fontSize: '15px', lineHeight: '1.2' }}>{team.name}</div>
                           </div>
 
