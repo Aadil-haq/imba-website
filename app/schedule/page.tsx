@@ -293,10 +293,11 @@ function SchedulePageContent() {
     ? games
     : games.filter(g => g.homeTeamId === filterTeam || g.awayTeamId === filterTeam)
 
-  // Determine grouping mode: by week# when multiple games share the same week value
+  // Determine grouping mode: always use week# when a team filter is active,
+  // otherwise use week# only when multiple games share the same week value
   const weekCounts: Record<number, number> = {}
   filtered.forEach(g => { weekCounts[g.week] = (weekCounts[g.week] || 0) + 1 })
-  const useWeekGrouping = Object.values(weekCounts).some(c => c > 1)
+  const useWeekGrouping = filterTeam !== 'all' || Object.values(weekCounts).some(c => c > 1)
 
   // All teams appearing in the filtered set (for bye calculation)
   const allTeamsInView = new Map<string, string>()
@@ -344,16 +345,22 @@ function SchedulePageContent() {
     })
   }
 
+  // When a single team is selected, never show bye teams (they're for other teams, not relevant)
+  const showByeTeams = filterTeam === 'all'
+
+  // When week grouping is on, use the actual week number as the label (key is the week number string)
+  const weekLabel = (k: string, fallback: string) =>
+    useWeekGrouping && !isNaN(Number(k)) ? `Week ${Number(k)}` : fallback
+
   if (hasPlayoffMarkers) {
     const regularKeys = groupKeys.filter(k => groups[k].every(g => g.week < 90))
     const playoffKeys = groupKeys.filter(k => groups[k].some(g => g.week >= 90))
     regularKeys.forEach((k, i) => {
       const playing = new Set(groups[k].flatMap(g => [g.homeTeam.name, g.awayTeam.name]))
-      const byeTeams = [...allTeamsInView.values()].filter(n => !playing.has(n)).sort()
-      // Use explicit label from first game if set (e.g. "Play-in")
+      const byeTeams = showByeTeams ? [...allTeamsInView.values()].filter(n => !playing.has(n)).sort() : []
       const customLabel = groups[k][0]?.label
       groupLabelMap[k] = {
-        label: customLabel || `Week ${i + 1}`,
+        label: customLabel || weekLabel(k, `Week ${i + 1}`),
         playoff: !!customLabel,
         byeTeams,
       }
@@ -363,10 +370,10 @@ function SchedulePageContent() {
     const REGULAR = groupKeys.length > 3 ? groupKeys.length - 3 : 0
     groupKeys.forEach((k, i) => {
       const playing = new Set(groups[k].flatMap(g => [g.homeTeam.name, g.awayTeam.name]))
-      const byeTeams = [...allTeamsInView.values()].filter(n => !playing.has(n)).sort()
+      const byeTeams = showByeTeams ? [...allTeamsInView.values()].filter(n => !playing.has(n)).sort() : []
       const customLabel = groups[k][0]?.label
       if (i < REGULAR) {
-        groupLabelMap[k] = { label: customLabel || `Week ${i + 1}`, playoff: !!customLabel, byeTeams }
+        groupLabelMap[k] = { label: customLabel || weekLabel(k, `Week ${i + 1}`), playoff: !!customLabel, byeTeams }
       } else {
         const fromEnd = (groupKeys.length - REGULAR) - 1 - (i - REGULAR)
         const autoLabel = fromEnd === 0 ? 'Finals' : fromEnd === 1 ? 'Semi Finals' : fromEnd === 2 ? 'Quarterfinals' : 'Round 1'
