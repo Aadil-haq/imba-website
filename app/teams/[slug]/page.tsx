@@ -300,6 +300,21 @@ export default function TeamPage() {
 
         {/* Schedule Tab */}
         {activeTab === 'schedule' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
+              <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: 0 }}>{selectedSeason} Schedule</h2>
+              <Link
+                href={`/schedule?season=${encodeURIComponent(selectedSeason)}&team=${team.id}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  backgroundColor: team.color, color: '#fff',
+                  padding: '8px 18px', borderRadius: '8px',
+                  fontSize: '13px', fontWeight: 700, textDecoration: 'none',
+                }}
+              >
+                View Full Schedule →
+              </Link>
+            </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
             {/* Results */}
             <div>
@@ -384,6 +399,7 @@ export default function TeamPage() {
                 </div>
               )}
             </div>
+          </div>
           </div>
         )}
       </div>
