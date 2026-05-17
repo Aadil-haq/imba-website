@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 interface Team { id: string; name: string; slug: string; color: string; logo?: string | null }
 interface Game {
@@ -518,14 +519,20 @@ function SchedulePageContent() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                           {/* Away Team */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                            {game.awayTeam.logo ? (
-                              <img src={game.awayTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
-                            ) : (
-                              <div style={{ width: '8px', height: '8px', backgroundColor: game.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
-                            )}
-                            <span style={{ color: awayWon ? '#ffffff' : '#aaaaaa', fontWeight: awayWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {game.awayTeam.name}
-                            </span>
+                            <Link
+                              href={`/teams/${game.awayTeam.slug}`}
+                              onClick={e => e.stopPropagation()}
+                              style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, textDecoration: 'none', cursor: 'pointer' }}
+                            >
+                              {game.awayTeam.logo ? (
+                                <img src={game.awayTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+                              ) : (
+                                <div style={{ width: '8px', height: '8px', backgroundColor: game.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                              )}
+                              <span style={{ color: awayWon ? '#ffffff' : '#aaaaaa', fontWeight: awayWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {game.awayTeam.name}
+                              </span>
+                            </Link>
                           </div>
 
                           {/* Score / VS */}
@@ -543,14 +550,20 @@ function SchedulePageContent() {
 
                           {/* Home Team */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
-                            <span style={{ color: homeWon ? '#ffffff' : '#aaaaaa', fontWeight: homeWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {game.homeTeam.name}
-                            </span>
-                            {game.homeTeam.logo ? (
-                              <img src={game.homeTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
-                            ) : (
-                              <div style={{ width: '8px', height: '8px', backgroundColor: game.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
-                            )}
+                            <Link
+                              href={`/teams/${game.homeTeam.slug}`}
+                              onClick={e => e.stopPropagation()}
+                              style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, textDecoration: 'none', cursor: 'pointer', justifyContent: 'flex-end' }}
+                            >
+                              <span style={{ color: homeWon ? '#ffffff' : '#aaaaaa', fontWeight: homeWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {game.homeTeam.name}
+                              </span>
+                              {game.homeTeam.logo ? (
+                                <img src={game.homeTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+                              ) : (
+                                <div style={{ width: '8px', height: '8px', backgroundColor: game.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                              )}
+                            </Link>
                           </div>
                         </div>
 
