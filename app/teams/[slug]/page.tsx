@@ -153,7 +153,7 @@ export default function TeamPage() {
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
             {team.logo
-              ? <img src={team.logo} alt={team.name} style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+              ? <img src={team.logo} alt={team.name} style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
               : <div style={{
                   width: '80px', height: '80px',
                   backgroundColor: team.color,
@@ -343,7 +343,7 @@ export default function TeamPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ color: won ? '#27AE60' : '#e74c3c', fontWeight: 700, fontSize: '12px', minWidth: '12px' }}>{won ? 'W' : 'L'}</span>
                           {opp.logo
-                            ? <img src={opp.logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+                            ? <img src={opp.logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
                             : <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: opp.color, flexShrink: 0, display: 'inline-block' }} />
                           }
                           <span style={{ color: '#ccc', fontSize: '14px' }}>{opp.name}</span>
@@ -382,7 +382,7 @@ export default function TeamPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ color: '#888', fontWeight: 700, fontSize: '12px' }}>{game.isHome ? 'HOME' : 'AWAY'}</span>
                           {opp.logo
-                            ? <img src={opp.logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+                            ? <img src={opp.logo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
                             : <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: opp.color, flexShrink: 0, display: 'inline-block' }} />
                           }
                           <span style={{ color: '#ccc', fontSize: '14px' }}>{opp.name}</span>

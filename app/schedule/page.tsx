@@ -80,7 +80,7 @@ function StatTable({ stats, teamName, teamColor, teamLogo }: { stats: PlayerStat
     <div style={{ overflowX: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
         {teamLogo
-          ? <img src={teamLogo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%' }} />
+          ? <img src={teamLogo} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff' }} />
           : <div style={{ width: '10px', height: '10px', backgroundColor: teamColor, borderRadius: '50%' }} />
         }
         <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px' }}>{teamName}</span>
@@ -165,7 +165,7 @@ function BoxScoreModal({ gameId, onClose }: { gameId: string; onClose: () => voi
                 {/* Away */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
                   {box.awayTeam.logo
-                    ? <img src={box.awayTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+                    ? <img src={box.awayTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
                     : <div style={{ width: '10px', height: '10px', backgroundColor: box.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
                   }
                   <span style={{ color: awayWon ? '#fff' : '#888', fontWeight: awayWon ? 800 : 600, fontSize: 'clamp(13px, 2vw, 16px)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -184,7 +184,7 @@ function BoxScoreModal({ gameId, onClose }: { gameId: string; onClose: () => voi
                     {box.homeTeam.name}
                   </span>
                   {box.homeTeam.logo
-                    ? <img src={box.homeTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+                    ? <img src={box.homeTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
                     : <div style={{ width: '10px', height: '10px', backgroundColor: box.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
                   }
                 </div>
@@ -532,7 +532,7 @@ function SchedulePageContent() {
                               style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, textDecoration: 'none', cursor: 'pointer' }}
                             >
                               {game.awayTeam.logo ? (
-                                <img src={game.awayTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+                                <img src={game.awayTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
                               ) : (
                                 <div style={{ width: '8px', height: '8px', backgroundColor: game.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
                               )}
@@ -566,7 +566,7 @@ function SchedulePageContent() {
                                 {game.homeTeam.name}
                               </span>
                               {game.homeTeam.logo ? (
-                                <img src={game.homeTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+                                <img src={game.homeTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
                               ) : (
                                 <div style={{ width: '8px', height: '8px', backgroundColor: game.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
                               )}

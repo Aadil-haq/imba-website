@@ -7,82 +7,76 @@ datasource db {
 }
 
 model Team {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  color     String   @default("#4A9FE3")
-  logo      String?
-  league    String   @default("Rec League")
-  active    Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  players      Player[]
-  homeGames    Game[]   @relation("HomeTeam")
-  awayGames    Game[]   @relation("AwayTeam")
-  playerStats  PlayerGameStat[]
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  color       String           @default("#4A9FE3")
+  logo        String?
+  league      String           @default("Rec League")
+  active      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  awayGames   Game[]           @relation("AwayTeam")
+  homeGames   Game[]           @relation("HomeTeam")
+  players     Player[]
+  playerStats PlayerGameStat[]
 }
 
 model Player {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   name      String
   number    Int
-  position  String   @default("G")
-  isSub     Boolean  @default(false)
-  season    String?
+  position  String           @default("G")
+  isSub     Boolean          @default(false)
   teamId    String
-  team      Team     @relation(fields: [teamId], references: [id])
-  createdAt DateTime @default(now())
-
+  createdAt DateTime         @default(now())
+  season    String?
+  team      Team             @relation(fields: [teamId], references: [id])
   gameStat  PlayerGameStat[]
 }
 
 model Game {
-  id         String   @id @default(cuid())
-  homeTeamId String
-  awayTeamId String
-  homeScore  Int?
-  awayScore  Int?
-  date       DateTime
-  time       String   @default("7:00 PM")
-  location   String   @default("Irving Masjid Gym")
-  week       Int      @default(1)
-  season     String   @default("Spring 2025")
-  league     String   @default("Rec League")
-  played     Boolean  @default(false)
-  forfeit    Boolean  @default(false)
-  driveUrl   String?
-  label      String?
-
-  homeTeam    Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeam    Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  id          String           @id @default(cuid())
+  homeTeamId  String
+  awayTeamId  String
+  homeScore   Int?
+  awayScore   Int?
+  date        DateTime
+  time        String           @default("7:00 PM")
+  location    String           @default("Irving Masjid Gym")
+  week        Int              @default(1)
+  season      String           @default("Spring 2025")
+  league      String           @default("Rec League")
+  played      Boolean          @default(false)
+  forfeit     Boolean          @default(false)
+  driveUrl    String?
+  label       String?
+  createdAt   DateTime         @default(now())
+  awayTeam    Team             @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeTeam    Team             @relation("HomeTeam", fields: [homeTeamId], references: [id])
   playerStats PlayerGameStat[]
-
-  createdAt DateTime @default(now())
 }
 
 model PlayerGameStat {
-  id       String @id @default(cuid())
-  playerId String
-  gameId   String
-  teamId   String
-
-  points     Int @default(0)
-  rebounds   Int @default(0)
-  assists    Int @default(0)
-  steals     Int @default(0)
-  blocks     Int @default(0)
-  turnovers  Int @default(0)
-  twoPtMade  Int @default(0)
-  twoPtAtt   Int @default(0)
-  threeMade  Int @default(0)
-  threeAtt   Int @default(0)
-  ftMade     Int @default(0)
-  ftAtt      Int @default(0)
-  fouls      Int @default(0)
-
-  player Player @relation(fields: [playerId], references: [id])
-  game   Game   @relation(fields: [gameId], references: [id])
-  team   Team   @relation(fields: [teamId], references: [id])
+  id        String @id @default(cuid())
+  playerId  String
+  gameId    String
+  teamId    String
+  points    Int    @default(0)
+  rebounds  Int    @default(0)
+  assists   Int    @default(0)
+  steals    Int    @default(0)
+  blocks    Int    @default(0)
+  turnovers Int    @default(0)
+  twoPtMade Int    @default(0)
+  twoPtAtt  Int    @default(0)
+  threeMade Int    @default(0)
+  threeAtt  Int    @default(0)
+  ftMade    Int    @default(0)
+  ftAtt     Int    @default(0)
+  fouls     Int    @default(0)
+  team      Team   @relation(fields: [teamId], references: [id])
+  game      Game   @relation(fields: [gameId], references: [id])
+  player    Player @relation(fields: [playerId], references: [id])
 
   @@unique([playerId, gameId])
 }
@@ -97,15 +91,15 @@ model Registration {
   position      String
   league        String   @default("Rec League")
   teamPref      String?
-  jerseyNumber  String?
-  jerseySize    String?
   paymentMethod String   @default("stripe")
   paymentStatus String   @default("pending")
   stripeSession String?
   amount        Int      @default(8000)
-  discountCode  String?
   season        String   @default("Spring 2025")
   createdAt     DateTime @default(now())
+  jerseyNumber  String?
+  jerseySize    String?
+  discountCode  String?
 }
 
 model Announcement {

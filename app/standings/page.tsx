@@ -206,7 +206,7 @@ function StandingsPageContent() {
                       <td style={{ padding: '14px 16px' }}>
                         <Link href={`/teams/${team.teamSlug}?season=${encodeURIComponent(selectedSeason)}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
                           {team.teamLogo
-                            ? <img src={team.teamLogo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }} />
+                            ? <img src={team.teamLogo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
                             : <div style={{ width: '12px', height: '12px', backgroundColor: team.teamColor, borderRadius: '50%', flexShrink: 0 }} />
                           }
                           <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>{team.teamName}</span>
