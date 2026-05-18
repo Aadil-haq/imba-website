@@ -404,27 +404,6 @@ function SchedulePageContent() {
           {/* Filters */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <div>
-              <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>LEAGUE</label>
-              <select
-                value={selectedLeague}
-                onChange={e => {
-                  const l = e.target.value
-                  setSelectedLeague(l)
-                  setFilterTeam('all')
-                  const matching = l === 'all' ? seasonOptions : seasonOptions.filter(s => s.league === l)
-                  const newSeason = matching[0]?.season ?? selectedSeason
-                  if (matching.length > 0) setSelectedSeason(newSeason)
-                  updateUrl(newSeason, l, 'all')
-                }}
-                style={selectStyle}
-              >
-                <option value="all">All Leagues</option>
-                {leagues.map(l => (
-                  <option key={l} value={l}>{l === 'Comp' ? 'Comp (D1)' : l === 'Rec' ? 'Rec (D2/D3)' : l}</option>
-                ))}
-              </select>
-            </div>
-            <div>
               <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>SEASON</label>
               <select
                 value={selectedSeason}
