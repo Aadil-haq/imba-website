@@ -367,18 +367,11 @@ function SchedulePageContent() {
     })
     labelPlayoffGroups(playoffKeys)
   } else {
-    const REGULAR = groupKeys.length > 3 ? groupKeys.length - 3 : 0
     groupKeys.forEach((k, i) => {
       const playing = new Set(groups[k].flatMap(g => [g.homeTeam.name, g.awayTeam.name]))
       const byeTeams = showByeTeams ? [...allTeamsInView.values()].filter(n => !playing.has(n)).sort() : []
       const customLabel = groups[k][0]?.label
-      if (i < REGULAR) {
-        groupLabelMap[k] = { label: customLabel || weekLabel(k, `Week ${i + 1}`), playoff: !!customLabel, byeTeams }
-      } else {
-        const fromEnd = (groupKeys.length - REGULAR) - 1 - (i - REGULAR)
-        const autoLabel = fromEnd === 0 ? 'Finals' : fromEnd === 1 ? 'Semi Finals' : fromEnd === 2 ? 'Quarterfinals' : 'Round 1'
-        groupLabelMap[k] = { label: customLabel || autoLabel, playoff: true, byeTeams: [] }
-      }
+      groupLabelMap[k] = { label: customLabel || weekLabel(k, `Week ${i + 1}`), playoff: false, byeTeams }
     })
   }
 
