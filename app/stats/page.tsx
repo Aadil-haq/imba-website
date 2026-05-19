@@ -116,14 +116,12 @@ function StatsPageContent() {
   const [loading, setLoading] = useState(true)
   const [seasonOptions, setSeasonOptions] = useState<SeasonOption[]>([])
   const [selectedSeason, setSelectedSeason] = useState('all')
-  const [selectedLeague, setSelectedLeague] = useState('all')
   const [sortCol, setSortCol] = useState('ppg')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
-  const updateUrl = (season: string, league: string, v: View, cat: LeaderCat) => {
+  const updateUrl = (season: string, v: View, cat: LeaderCat) => {
     const p = new URLSearchParams()
     if (season && season !== 'all') p.set('season', season)
-    if (league !== 'all') p.set('league', league)
     if (v !== 'leaders') p.set('view', v)
     if (cat !== 'points') p.set('cat', cat)
     router.replace(`/stats${p.toString() ? '?' + p : ''}`, { scroll: false })
@@ -133,12 +131,10 @@ function StatsPageContent() {
     fetch('/api/seasons').then(r => r.json()).then((data: SeasonOption[]) => {
       setSeasonOptions(data)
       const urlSeason = searchParams.get('season')
-      const urlLeague = searchParams.get('league') || 'all'
       const urlView = (searchParams.get('view') as View) || 'leaders'
       const urlCat = (searchParams.get('cat') as LeaderCat) || 'points'
       const match = urlSeason && data.find(s => s.season === urlSeason)
       setSelectedSeason(match ? urlSeason : (data[0]?.season ?? 'all'))
-      setSelectedLeague(urlLeague)
       setView(urlView)
       setLeaderCat(urlCat)
     }).catch(() => {})
@@ -151,12 +147,11 @@ function StatsPageContent() {
     const isPct = ['fg', 'threePct', 'ftPct'].includes(leaderCat)
     const params = new URLSearchParams({ category: leaderCat, limit: '15', minGames: isPct ? '3' : '4' })
     if (selectedSeason !== 'all') params.set('season', selectedSeason)
-    if (selectedLeague !== 'all') params.set('league', selectedLeague)
     fetch(`/api/stats?${params}`)
       .then(r => r.json())
       .then(d => { setLeaderStats(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => { setLeaderStats([]); setLoading(false) })
-  }, [view, leaderCat, selectedSeason, selectedLeague])
+  }, [view, leaderCat, selectedSeason])
 
   // Fetch full stats table
   useEffect(() => {
@@ -164,15 +159,13 @@ function StatsPageContent() {
     setLoading(true)
     const params = new URLSearchParams({ category: 'points', limit: '200', minGames: '1' })
     if (selectedSeason !== 'all') params.set('season', selectedSeason)
-    if (selectedLeague !== 'all') params.set('league', selectedLeague)
     fetch(`/api/stats?${params}`)
       .then(r => r.json())
       .then(d => { setFullStats(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => { setFullStats([]); setLoading(false) })
-  }, [view, selectedSeason, selectedLeague])
+  }, [view, selectedSeason])
 
-  const leagues = [...new Set(seasonOptions.map(s => s.league))]
-  const filteredSeasons = selectedLeague === 'all' ? seasonOptions : seasonOptions.filter(s => s.league === selectedLeague)
+  const uniqueSeasons = [...new Set(seasonOptions.map(s => s.season))]
   const cat = LEADER_CATS.find(c => c.key === leaderCat)!
 
   function handleSort(col: string) {
@@ -206,23 +199,16 @@ function StatsPageContent() {
         {/* Filters */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
-            <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>League</label>
-            <select value={selectedLeague} onChange={e => { const l = e.target.value; setSelectedLeague(l); setSelectedSeason('all'); updateUrl('all', l, view, leaderCat) }} style={selectStyle}>
-              <option value="all">All Leagues</option>
-              {leagues.map(l => <option key={l} value={l}>{l === 'Comp' ? 'Comp (D1)' : l === 'Rec' ? 'Rec (D2/D3)' : l}</option>)}
-            </select>
-          </div>
-          <div>
             <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Season</label>
-            <select value={selectedSeason} onChange={e => { const s = e.target.value; setSelectedSeason(s); updateUrl(s, selectedLeague, view, leaderCat) }} style={selectStyle}>
+            <select value={selectedSeason} onChange={e => { const s = e.target.value; setSelectedSeason(s); updateUrl(s, view, leaderCat) }} style={selectStyle}>
               <option value="all">All Seasons</option>
-              {filteredSeasons.map(s => <option key={`${s.season}-${s.league}`} value={s.season}>{s.season}</option>)}
+              {uniqueSeasons.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           {/* View toggle */}
           <div style={{ display: 'flex', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', overflow: 'hidden', marginLeft: 'auto' }}>
             {(['leaders', 'full'] as View[]).map(v => (
-              <button key={v} onClick={() => { setView(v); updateUrl(selectedSeason, selectedLeague, v, leaderCat) }} style={{
+              <button key={v} onClick={() => { setView(v); updateUrl(selectedSeason, v, leaderCat) }} style={{
                 padding: '8px 18px', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer',
                 backgroundColor: view === v ? '#4A9FE3' : 'transparent',
                 color: view === v ? '#fff' : '#666',
@@ -239,7 +225,7 @@ function StatsPageContent() {
             {/* Category tabs */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
               {LEADER_CATS.map(c => (
-                <button key={c.key} onClick={() => { setLeaderCat(c.key); updateUrl(selectedSeason, selectedLeague, view, c.key) }} style={{
+                <button key={c.key} onClick={() => { setLeaderCat(c.key); updateUrl(selectedSeason, view, c.key) }} style={{
                   padding: '8px 14px', borderRadius: '6px', fontWeight: 700, fontSize: '14px',
                   cursor: 'pointer', border: 'none',
                   backgroundColor: leaderCat === c.key ? '#4A9FE3' : '#1a1a1a',

@@ -54,7 +54,6 @@ function StandingsPageContent() {
   const [seasonsLoading, setSeasonsLoading] = useState(true)
   const [seasonOptions, setSeasonOptions] = useState<SeasonOption[]>([])
   const [selectedSeason, setSelectedSeason] = useState<string>('')
-  const [selectedLeague, setSelectedLeague] = useState<string>('all')
 
   useEffect(() => {
     fetch('/api/seasons')
@@ -62,9 +61,7 @@ function StandingsPageContent() {
       .then((data: SeasonOption[]) => {
         setSeasonOptions(data)
         const urlSeason = searchParams.get('season')
-        const urlLeague = searchParams.get('league') || 'all'
         const match = urlSeason && data.find(s => s.season === urlSeason)
-        setSelectedLeague(urlLeague)
         setSelectedSeason(match ? urlSeason : (data[0]?.season ?? ''))
         setSeasonsLoading(false)
       })
@@ -76,7 +73,6 @@ function StandingsPageContent() {
     setLoading(true)
 
     const params = new URLSearchParams({ season: selectedSeason })
-    if (selectedLeague !== 'all') params.set('league', selectedLeague)
 
     const singlePlayoffSeasons = new Set(['D1 2023-24 Winter'])
     if (singlePlayoffSeasons.has(selectedSeason)) params.set('playoffCount', '1')
@@ -89,32 +85,20 @@ function StandingsPageContent() {
         setLoading(false)
       })
       .catch(() => { setStandings([]); setPlayoffTeamIds([]); setLoading(false) })
-  }, [selectedSeason, selectedLeague])
+  }, [selectedSeason])
 
-  const updateUrl = (season: string, league: string) => {
+  const updateUrl = (season: string) => {
     const p = new URLSearchParams()
     if (season) p.set('season', season)
-    if (league !== 'all') p.set('league', league)
     router.replace(`/standings${p.toString() ? '?' + p : ''}`, { scroll: false })
-  }
-
-  const handleLeagueChange = (league: string) => {
-    const matching = league === 'all' ? seasonOptions : seasonOptions.filter(s => s.league === league)
-    const newSeason = matching[0]?.season ?? selectedSeason
-    setSelectedLeague(league)
-    setSelectedSeason(newSeason)
-    updateUrl(newSeason, league)
   }
 
   const handleSeasonChange = (season: string) => {
     setSelectedSeason(season)
-    updateUrl(season, selectedLeague)
+    updateUrl(season)
   }
 
-  const leagues = [...new Set(seasonOptions.map(s => s.league))]
-  const filteredSeasons = selectedLeague === 'all'
-    ? seasonOptions
-    : seasonOptions.filter(s => s.league === selectedLeague)
+  const uniqueSeasons = [...new Set(seasonOptions.map(s => s.season))]
 
   const currentLabel = selectedSeason || 'Select a Season'
 
@@ -133,19 +117,10 @@ function StandingsPageContent() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
-            <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>League</label>
-            <select value={selectedLeague} onChange={e => handleLeagueChange(e.target.value)} style={selectStyle}>
-              <option value="all">All Leagues</option>
-              {leagues.map(l => (
-                <option key={l} value={l}>{l === 'Comp' ? 'Comp (D1)' : l === 'Rec' ? 'Rec (D2/D3)' : l}</option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label style={{ color: '#555', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Season</label>
             <select value={selectedSeason} onChange={e => handleSeasonChange(e.target.value)} style={selectStyle}>
-              {filteredSeasons.map(s => (
-                <option key={`${s.season}-${s.league}`} value={s.season}>{s.season}</option>
+              {uniqueSeasons.map(s => (
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </div>

@@ -104,38 +104,38 @@ export default async function HomePage() {
               <Link key={game.id} href={`/games/${game.id}`} style={{ textDecoration: 'none' }}>
               <div style={{
                 borderRight: '1px solid #1a1a1a',
-                padding: '10px 16px',
+                padding: '14px 20px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '4px',
-                minWidth: '160px',
+                gap: '6px',
+                minWidth: '190px',
                 cursor: 'pointer',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {(game.homeTeam as any).logo
-                      ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '14px', height: '14px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff' }} />
-                      : <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: game.homeTeam.color, flexShrink: 0 }} />
+                      ? <img src={(game.homeTeam as any).logo} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff' }} />
+                      : <div style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: game.homeTeam.color, flexShrink: 0 }} />
                     }
-                    <span style={{ color: homeWon ? '#fff' : '#666', fontSize: '11px', fontWeight: homeWon ? 700 : 400 }}>{abbrev(game.homeTeam.name)}</span>
+                    <span style={{ color: homeWon ? '#fff' : '#666', fontSize: '13px', fontWeight: homeWon ? 700 : 400 }}>{abbrev(game.homeTeam.name)}</span>
                   </div>
-                  <span style={{ color: played ? (homeWon ? '#fff' : '#555') : '#4A9FE3', fontWeight: 700, fontSize: '12px' }}>
+                  <span style={{ color: played ? (homeWon ? '#fff' : '#555') : '#4A9FE3', fontWeight: 700, fontSize: '15px' }}>
                     {played ? game.homeScore : '—'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {(game.awayTeam as any).logo
-                      ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '14px', height: '14px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff' }} />
-                      : <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: game.awayTeam.color, flexShrink: 0 }} />
+                      ? <img src={(game.awayTeam as any).logo} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff' }} />
+                      : <div style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: game.awayTeam.color, flexShrink: 0 }} />
                     }
-                    <span style={{ color: awayWon ? '#fff' : '#666', fontSize: '11px', fontWeight: awayWon ? 700 : 400 }}>{abbrev(game.awayTeam.name)}</span>
+                    <span style={{ color: awayWon ? '#fff' : '#666', fontSize: '13px', fontWeight: awayWon ? 700 : 400 }}>{abbrev(game.awayTeam.name)}</span>
                   </div>
-                  <span style={{ color: played ? (awayWon ? '#fff' : '#555') : '#4A9FE3', fontWeight: 700, fontSize: '12px' }}>
+                  <span style={{ color: played ? (awayWon ? '#fff' : '#555') : '#4A9FE3', fontWeight: 700, fontSize: '15px' }}>
                     {played ? game.awayScore : '—'}
                   </span>
                 </div>
-                <div style={{ color: played ? '#27AE60' : '#555', fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>
+                <div style={{ color: played ? '#27AE60' : '#555', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>
                   {played ? 'FINAL' : new Date(game.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
               </div>
@@ -151,7 +151,7 @@ export default async function HomePage() {
       {/* ── Hero ── */}
       <section style={{
         background: 'linear-gradient(160deg, #0a0a14 0%, #0f0f0f 40%, #0a0f1a 100%)',
-        padding: 'clamp(28px,4vw,48px) 0 clamp(32px,5vw,64px)',
+        padding: 'clamp(18px,2.5vw,32px) 0 clamp(22px,3vw,44px)',
         position: 'relative',
         overflow: 'hidden',
       }}>
@@ -168,7 +168,7 @@ export default async function HomePage() {
                 <div style={{ color: '#fff', fontSize: '22px', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>IMBA</div>
               </div>
 
-              <h1 style={{ color: '#fff', fontSize: 'clamp(32px, 6vw, 64px)', fontWeight: 900, lineHeight: 1.0, letterSpacing: '-0.03em', marginBottom: '16px' }}>
+              <h1 style={{ color: '#fff', fontSize: 'clamp(26px, 5vw, 52px)', fontWeight: 900, lineHeight: 1.0, letterSpacing: '-0.03em', marginBottom: '16px' }}>
                 {s.hero_title_line1}<br />
                 <span style={{ color: '#4A9FE3' }}>{s.hero_title_line2}</span>
               </h1>
@@ -177,10 +177,7 @@ export default async function HomePage() {
               </p>
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '32px' }}>
-                <Link href="/register" style={{ backgroundColor: '#4A9FE3', color: '#fff', fontWeight: 800, fontSize: '15px', padding: '13px 28px', borderRadius: '6px', textDecoration: 'none', letterSpacing: '-0.01em' }}>
-                  {s.hero_cta_secondary}
-                </Link>
-                <Link href="/schedule" style={{ backgroundColor: 'transparent', color: '#fff', fontWeight: 700, fontSize: '15px', padding: '13px 28px', borderRadius: '6px', textDecoration: 'none', border: '1px solid #2a2a2a' }}>
+                <Link href="/schedule" style={{ backgroundColor: '#4A9FE3', color: '#fff', fontWeight: 800, fontSize: '15px', padding: '13px 28px', borderRadius: '6px', textDecoration: 'none', letterSpacing: '-0.01em' }}>
                   {s.hero_cta_primary}
                 </Link>
               </div>
@@ -399,39 +396,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ── Register CTA ── */}
-      <section style={{
-        background: 'linear-gradient(135deg, #0a1628 0%, #0d1f3c 50%, #0a1628 100%)',
-        padding: 'clamp(48px,8vw,80px) 0',
-        borderTop: '1px solid #1a2a3a',
-      }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ textAlign: 'center' }}>
-          <div style={{ color: '#4A9FE3', fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '16px' }}>
-            {s.season_label}
-          </div>
-          <h2 style={{ color: '#fff', fontSize: 'clamp(28px,5vw,52px)', fontWeight: 900, letterSpacing: '-0.03em', marginBottom: '14px', lineHeight: 1.1 }}>
-            Ready to Play?
-          </h2>
-          <p style={{ color: '#555', fontSize: 'clamp(14px,2vw,17px)', marginBottom: '32px' }}>
-            {s.cta_subtitle}
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/register" style={{ backgroundColor: '#4A9FE3', color: '#fff', fontWeight: 800, fontSize: 'clamp(14px,2vw,17px)', padding: '14px 36px', borderRadius: '6px', textDecoration: 'none' }}>
-              {s.cta_button_text}
-            </Link>
-            <a href="https://www.instagram.com/imba_0fficial/" target="_blank" rel="noopener noreferrer"
-              style={{ backgroundColor: 'transparent', color: '#fff', fontWeight: 700, fontSize: 'clamp(14px,2vw,17px)', padding: '14px 28px', borderRadius: '6px', textDecoration: 'none', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <defs><linearGradient id="ig" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#f09433" /><stop offset="50%" stopColor="#dc2743" /><stop offset="100%" stopColor="#bc1888" /></linearGradient></defs>
-                <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#ig)" strokeWidth="2" fill="none" />
-                <circle cx="12" cy="12" r="4" stroke="url(#ig)" strokeWidth="2" fill="none" />
-                <circle cx="17.5" cy="6.5" r="1.2" fill="url(#ig)" />
-              </svg>
-              Follow @imba_0fficial
-            </a>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }

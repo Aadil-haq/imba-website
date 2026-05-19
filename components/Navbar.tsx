@@ -79,23 +79,6 @@ export default function Navbar() {
                 </Link>
               )
             })}
-            <Link
-              href="/register"
-              style={{
-                backgroundColor: '#4A9FE3',
-                color: '#ffffff',
-                fontWeight: 700,
-                fontSize: '14px',
-                padding: '8px 20px',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = '#2d7fc7' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = '#4A9FE3' }}
-            >
-              Register Now
-            </Link>
           </div>
 
           {/* Mobile hamburger */}
@@ -136,25 +119,6 @@ export default function Navbar() {
                 </Link>
               )
             })}
-            <div className="px-4 pt-2">
-              <Link
-                href="/register"
-                onClick={() => setMenuOpen(false)}
-                style={{
-                  display: 'block',
-                  textAlign: 'center',
-                  backgroundColor: '#4A9FE3',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: '16px',
-                  padding: '12px',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
-                }}
-              >
-                Register Now
-              </Link>
-            </div>
           </div>
         )}
       </div>
