@@ -184,9 +184,7 @@ export default async function HomePage() {
 
               <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
                 {[
-                  { label: 'Teams', value: s.stat_teams },
                   { label: 'Divisions', value: s.stat_divisions ?? '2' },
-                  { label: 'Fee', value: s.stat_fee },
                   { label: 'Location', value: s.stat_location },
                 ].map(item => (
                   <div key={item.label} style={{ textAlign: 'center' }}>
