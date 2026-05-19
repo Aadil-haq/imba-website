@@ -436,7 +436,17 @@ function SchedulePageContent() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             {dates.map(dateKey => {
               const { label, playoff, byeTeams } = groupLabelMap[dateKey]
-              const gamesInGroup = groups[dateKey]
+              const gamesInGroup = [...groups[dateKey]].sort((a, b) => {
+                const parseTime = (t: string) => {
+                  const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
+                  if (!m) return 0
+                  let h = parseInt(m[1]); const min = parseInt(m[2])
+                  if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12
+                  if (m[3].toUpperCase() === 'AM' && h === 12) h = 0
+                  return h * 60 + min
+                }
+                return parseTime(a.time) - parseTime(b.time)
+              })
               // For date-grouped: show the date. For week-grouped: show date range from games
               let dateDisplay = ''
               if (useWeekGrouping) {
