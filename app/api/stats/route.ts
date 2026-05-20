@@ -5,7 +5,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category') || 'points'
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const rawLimit = parseInt(searchParams.get('limit') || '50')
+    const limit = Math.min(Math.max(rawLimit, 1), 200)  // clamp 1–200
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0)
     const season = searchParams.get('season') || null   // e.g. "D1 2025-26 Winter"
     const league = searchParams.get('league') || null   // e.g. "Comp", "Rec", "35+"
     const minGames = parseInt(searchParams.get('minGames') || '4')  // must have played 4+ games
@@ -15,10 +17,11 @@ export async function GET(request: Request) {
     if (season) gameWhere.season = season
     if (league) gameWhere.league = league
 
-    // Find all matching game IDs first
+    // Find all matching game IDs first (cap at 5000 — enough for all seasons)
     const matchingGames = await prisma.game.findMany({
       where: gameWhere,
       select: { id: true },
+      take: 5000,
     })
     const gameIds = matchingGames.map(g => g.id)
 
@@ -38,7 +41,12 @@ export async function GET(request: Request) {
     // Exclude sub players from all leaderboards
     const players = await prisma.player.findMany({
       where: { id: { in: playerIds }, isSub: false },
-      include: { team: true },
+      select: {
+        id: true,
+        name: true,
+        number: true,
+        team: { select: { id: true, name: true, slug: true, color: true } },
+      },
     })
     const playerMap = new Map(players.map((p) => [p.id, p]))
 
@@ -102,7 +110,8 @@ export async function GET(request: Request) {
       return bv - av
     })
 
-    return NextResponse.json(leaders.slice(0, limit))
+    const page = leaders.slice(offset, offset + limit)
+    return NextResponse.json(page)
   } catch (error) {
     console.error('Stats GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })

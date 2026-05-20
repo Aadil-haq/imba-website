@@ -17,6 +17,7 @@ export async function GET(
 
     const gameStats = await prisma.playerGameStat.findMany({
       where: { playerId: id },
+      take: 500,
       include: {
         game: {
           select: {

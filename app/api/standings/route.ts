@@ -15,16 +15,19 @@ export async function GET(request: Request) {
 
     const teams = await prisma.team.findMany({
       where: league ? { league } : {},
+      take: 200,
       include: {
         homeGames: {
           where: gameWhere as any,
           select: { homeScore: true, awayScore: true, date: true },
           orderBy: { date: 'asc' },
+          take: 500,
         },
         awayGames: {
           where: gameWhere as any,
           select: { homeScore: true, awayScore: true, date: true },
           orderBy: { date: 'asc' },
+          take: 500,
         },
       },
     })
@@ -113,6 +116,7 @@ export async function GET(request: Request) {
         const playoffGames = await prisma.game.findMany({
           where: { season, week: { gte: 90 } },
           select: { homeTeamId: true, awayTeamId: true },
+          take: 200,
         })
         const ids = new Set<string>()
         playoffGames.forEach(g => { ids.add(g.homeTeamId); ids.add(g.awayTeamId) })

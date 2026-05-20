@@ -14,9 +14,10 @@ export async function GET(request: Request) {
 
     const games = await prisma.game.findMany({
       where,
+      take: 500,
       include: {
-        homeTeam: true,
-        awayTeam: true,
+        homeTeam: { select: { id: true, name: true, slug: true, color: true, logo: true } },
+        awayTeam: { select: { id: true, name: true, slug: true, color: true, logo: true } },
       },
       orderBy: [{ date: 'asc' }, { week: 'asc' }],
     })

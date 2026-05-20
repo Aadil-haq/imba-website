@@ -114,6 +114,9 @@ function StatsPageContent() {
   const [leaderStats, setLeaderStats] = useState<PlayerStat[]>([])
   const [fullStats, setFullStats] = useState<PlayerStat[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [fullOffset, setFullOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [seasonOptions, setSeasonOptions] = useState<SeasonOption[]>([])
   const [selectedSeason, setSelectedSeason] = useState('all')
   const [sortCol, setSortCol] = useState('ppg')
@@ -153,17 +156,43 @@ function StatsPageContent() {
       .catch(() => { setLeaderStats([]); setLoading(false) })
   }, [view, leaderCat, selectedSeason])
 
-  // Fetch full stats table
+  const FULL_PAGE_SIZE = 50
+
+  // Fetch full stats table (first page)
   useEffect(() => {
     if (view !== 'full') return
     setLoading(true)
-    const params = new URLSearchParams({ category: 'points', limit: '200', minGames: '1' })
+    setFullOffset(0)
+    setHasMore(false)
+    const params = new URLSearchParams({ category: 'points', limit: String(FULL_PAGE_SIZE), offset: '0', minGames: '1' })
     if (selectedSeason !== 'all') params.set('season', selectedSeason)
     fetch(`/api/stats?${params}`)
       .then(r => r.json())
-      .then(d => { setFullStats(Array.isArray(d) ? d : []); setLoading(false) })
+      .then(d => {
+        const rows = Array.isArray(d) ? d : []
+        setFullStats(rows)
+        setHasMore(rows.length === FULL_PAGE_SIZE)
+        setLoading(false)
+      })
       .catch(() => { setFullStats([]); setLoading(false) })
   }, [view, selectedSeason])
+
+  function loadMoreFull() {
+    const nextOffset = fullOffset + FULL_PAGE_SIZE
+    setLoadingMore(true)
+    const params = new URLSearchParams({ category: 'points', limit: String(FULL_PAGE_SIZE), offset: String(nextOffset), minGames: '1' })
+    if (selectedSeason !== 'all') params.set('season', selectedSeason)
+    fetch(`/api/stats?${params}`)
+      .then(r => r.json())
+      .then(d => {
+        const rows = Array.isArray(d) ? d : []
+        setFullStats(prev => [...prev, ...rows])
+        setFullOffset(nextOffset)
+        setHasMore(rows.length === FULL_PAGE_SIZE)
+        setLoadingMore(false)
+      })
+      .catch(() => { setLoadingMore(false) })
+  }
 
   const uniqueSeasons = [...new Set(seasonOptions.map(s => s.season))]
   const cat = LEADER_CATS.find(c => c.key === leaderCat)!
@@ -329,58 +358,81 @@ function StatsPageContent() {
               No stats found for this selection
             </div>
           ) : (
-            <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '12px', overflow: 'hidden', overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#4A9FE3' }}>
-                    <th style={{ padding: '12px 10px', color: '#fff', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap' }}>#</th>
-                    {FULL_COLS.map(col => {
-                      const active = sortCol === col.key
-                      return (
-                        <th key={col.key} onClick={() => handleSort(col.key)} className="sort-th"
-                          style={{ padding: 0, whiteSpace: 'nowrap', backgroundColor: active ? 'rgba(0,0,0,0.25)' : 'transparent', cursor: 'pointer', userSelect: 'none' }}>
-                          <div style={{ padding: '12px 10px', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: col.align === 'left' ? 'flex-start' : 'center', color: '#fff', fontWeight: active ? 900 : 700 }}>
-                            {col.label}
-                            <span style={{ fontSize: '9px', opacity: active ? 1 : 0.4 }}>{active ? (sortDir === 'desc' ? '▼' : '▲') : '▼'}</span>
-                          </div>
-                        </th>
-                      )
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedFull.map((p, i) => (
-                    <tr key={p.playerId} style={{ backgroundColor: i % 2 === 0 ? '#1a1a1a' : '#161616', borderBottom: '1px solid #222' }}>
-                      <td style={{ padding: '10px', textAlign: 'center', color: rankColor(i), fontWeight: 700 }}>{i + 1}</td>
+            <>
+              <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '12px', overflow: 'hidden', overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#4A9FE3' }}>
+                      <th style={{ padding: '12px 10px', color: '#fff', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap' }}>#</th>
                       {FULL_COLS.map(col => {
-                        const val = getFullCellVal(p, col.key)
                         const active = sortCol === col.key
-                        if (col.key === 'playerName') return (
-                          <td key={col.key} style={{ padding: '10px 12px', whiteSpace: 'nowrap', backgroundColor: active ? 'rgba(74,159,227,0.06)' : undefined }}>
-                            <Link href={`/players/${p.playerId}`} style={{ color: '#4A9FE3', fontWeight: 700, textDecoration: 'none', cursor: 'pointer' }}>
-                              {val}
-                            </Link>
-                          </td>
-                        )
-                        if (col.key === 'teamName') return (
-                          <td key={col.key} style={{ padding: '10px 12px', whiteSpace: 'nowrap', backgroundColor: active ? 'rgba(74,159,227,0.06)' : undefined }}>
-                            <Link href={`/teams/${p.teamSlug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ width: '7px', height: '7px', backgroundColor: p.teamColor, borderRadius: '50%', display: 'inline-block' }} />
-                              <span style={{ color: '#aaa' }}>{val}</span>
-                            </Link>
-                          </td>
-                        )
                         return (
-                          <td key={col.key} style={{ padding: '10px', textAlign: 'center', whiteSpace: 'nowrap', backgroundColor: active ? 'rgba(74,159,227,0.08)' : undefined, color: active ? '#4A9FE3' : col.isPct ? '#bbb' : '#888', fontWeight: active ? 700 : 400 }}>
-                            {val}
-                          </td>
+                          <th key={col.key} onClick={() => handleSort(col.key)} className="sort-th"
+                            style={{ padding: 0, whiteSpace: 'nowrap', backgroundColor: active ? 'rgba(0,0,0,0.25)' : 'transparent', cursor: 'pointer', userSelect: 'none' }}>
+                            <div style={{ padding: '12px 10px', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: col.align === 'left' ? 'flex-start' : 'center', color: '#fff', fontWeight: active ? 900 : 700 }}>
+                              {col.label}
+                              <span style={{ fontSize: '9px', opacity: active ? 1 : 0.4 }}>{active ? (sortDir === 'desc' ? '▼' : '▲') : '▼'}</span>
+                            </div>
+                          </th>
                         )
                       })}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {sortedFull.map((p, i) => (
+                      <tr key={p.playerId} style={{ backgroundColor: i % 2 === 0 ? '#1a1a1a' : '#161616', borderBottom: '1px solid #222' }}>
+                        <td style={{ padding: '10px', textAlign: 'center', color: rankColor(i), fontWeight: 700 }}>{i + 1}</td>
+                        {FULL_COLS.map(col => {
+                          const val = getFullCellVal(p, col.key)
+                          const active = sortCol === col.key
+                          if (col.key === 'playerName') return (
+                            <td key={col.key} style={{ padding: '10px 12px', whiteSpace: 'nowrap', backgroundColor: active ? 'rgba(74,159,227,0.06)' : undefined }}>
+                              <Link href={`/players/${p.playerId}`} style={{ color: '#4A9FE3', fontWeight: 700, textDecoration: 'none', cursor: 'pointer' }}>
+                                {val}
+                              </Link>
+                            </td>
+                          )
+                          if (col.key === 'teamName') return (
+                            <td key={col.key} style={{ padding: '10px 12px', whiteSpace: 'nowrap', backgroundColor: active ? 'rgba(74,159,227,0.06)' : undefined }}>
+                              <Link href={`/teams/${p.teamSlug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ width: '7px', height: '7px', backgroundColor: p.teamColor, borderRadius: '50%', display: 'inline-block' }} />
+                                <span style={{ color: '#aaa' }}>{val}</span>
+                              </Link>
+                            </td>
+                          )
+                          return (
+                            <td key={col.key} style={{ padding: '10px', textAlign: 'center', whiteSpace: 'nowrap', backgroundColor: active ? 'rgba(74,159,227,0.08)' : undefined, color: active ? '#4A9FE3' : col.isPct ? '#bbb' : '#888', fontWeight: active ? 700 : 400 }}>
+                              {val}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Load more */}
+              {hasMore && (
+                <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                  <button
+                    onClick={loadMoreFull}
+                    disabled={loadingMore}
+                    style={{
+                      backgroundColor: loadingMore ? '#333' : '#1a1a1a',
+                      color: loadingMore ? '#555' : '#4A9FE3',
+                      border: '1px solid #2a2a2a',
+                      borderRadius: '8px',
+                      padding: '10px 28px',
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      cursor: loadingMore ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {loadingMore ? 'Loading...' : `Load more (showing ${fullStats.length})`}
+                  </button>
+                </div>
+              )}
+            </>
           )
         )}
       </div>

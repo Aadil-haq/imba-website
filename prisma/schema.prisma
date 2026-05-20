@@ -19,6 +19,9 @@ model Team {
   homeGames   Game[]           @relation("HomeTeam")
   players     Player[]
   playerStats PlayerGameStat[]
+
+  @@index([league])
+  @@index([active])
 }
 
 model Player {
@@ -32,6 +35,9 @@ model Player {
   season    String?
   team      Team             @relation(fields: [teamId], references: [id])
   gameStat  PlayerGameStat[]
+
+  @@index([teamId])
+  @@index([isSub])
 }
 
 model Game {
@@ -54,6 +60,14 @@ model Game {
   awayTeam    Team             @relation("AwayTeam", fields: [awayTeamId], references: [id])
   homeTeam    Team             @relation("HomeTeam", fields: [homeTeamId], references: [id])
   playerStats PlayerGameStat[]
+
+  @@index([season])
+  @@index([league])
+  @@index([season, league])
+  @@index([played])
+  @@index([week])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
 }
 
 model PlayerGameStat {
@@ -79,6 +93,9 @@ model PlayerGameStat {
   player    Player @relation(fields: [playerId], references: [id])
 
   @@unique([playerId, gameId])
+  @@index([gameId])
+  @@index([playerId])
+  @@index([teamId])
 }
 
 model Registration {

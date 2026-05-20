@@ -8,7 +8,7 @@ export async function GET(request: Request) {
 
     let gameIdFilter: { gameId: { in: string[] } } | undefined
     if (season) {
-      const games = await prisma.game.findMany({ where: { season, played: true }, select: { id: true } })
+      const games = await prisma.game.findMany({ where: { season, played: true }, select: { id: true }, take: 5000 })
       const ids = games.map(g => g.id)
       if (ids.length === 0) return NextResponse.json({ scorers: [], rebounders: [], assisters: [], stealers: [] })
       gameIdFilter = { gameId: { in: ids } }
@@ -30,7 +30,11 @@ export async function GET(request: Request) {
     const playerIds = stats.map((s) => s.playerId)
     const players = await prisma.player.findMany({
       where: { id: { in: playerIds } },
-      include: { team: true },
+      select: {
+        id: true,
+        name: true,
+        team: { select: { id: true, name: true, slug: true, color: true } },
+      },
     })
     const playerMap = new Map(players.map((p) => [p.id, p]))
 
