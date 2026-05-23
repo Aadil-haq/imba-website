@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/admin/AdminLayout'
+import Link from 'next/link'
 
 interface Team { id: string; name: string; color: string; league: string }
 interface Game {
@@ -194,12 +195,18 @@ export default function AdminGamesPage() {
             <h1 style={{ color: '#fff', fontSize: '26px', fontWeight: 900 }}>Games</h1>
             <p style={{ color: '#555', fontSize: '14px' }}>Schedule games and enter scores</p>
           </div>
-          <button
-            onClick={() => { setShowAddForm(!showAddForm); }}
-            style={{ backgroundColor: showAddForm ? '#2a2a2a' : '#4A9FE3', color: '#fff', fontWeight: 700, fontSize: '14px', padding: '10px 22px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-          >
-            {showAddForm ? '✕ Cancel' : '+ Add Game'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Link href="/admin/games/bulk"
+              style={{ backgroundColor: '#1a3a1a', color: '#27AE60', fontWeight: 700, fontSize: '14px', padding: '10px 22px', borderRadius: '8px', border: '1px solid #27AE6044', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              📋 Bulk Import
+            </Link>
+            <button
+              onClick={() => { setShowAddForm(!showAddForm); }}
+              style={{ backgroundColor: showAddForm ? '#2a2a2a' : '#4A9FE3', color: '#fff', fontWeight: 700, fontSize: '14px', padding: '10px 22px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+            >
+              {showAddForm ? '✕ Cancel' : '+ Add Game'}
+            </button>
+          </div>
         </div>
 
         {/* Status message */}

@@ -21,7 +21,12 @@ export async function GET(request: Request) {
       },
       orderBy: [{ date: 'asc' }, { week: 'asc' }],
     })
-    return NextResponse.json(games)
+    return NextResponse.json(games, {
+      headers: {
+        // CDN caches for 2 min; serves stale for up to 5 min while revalidating
+        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+      },
+    })
   } catch (error) {
     console.error('Games GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch games' }, { status: 500 })
