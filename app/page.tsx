@@ -1,4 +1,4 @@
-export const revalidate = 300 // cache homepage for 5 minutes
+export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
