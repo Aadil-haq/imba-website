@@ -13,10 +13,12 @@ function createPrismaClient() {
   return new PrismaClient({ adapter } as any)
 }
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
+// Dev: reuse singleton to avoid exhausting connections during hot reload.
+// Prod: always create fresh — prevents stale Turso HTTP connections from
+// blocking subsequent requests on warm serverless instances.
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient()
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+export const prisma =
+  process.env.NODE_ENV === 'production'
+    ? createPrismaClient()
+    : (globalForPrisma.prisma ?? (globalForPrisma.prisma = createPrismaClient()))
