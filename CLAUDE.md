@@ -28,9 +28,8 @@ No test suite exists in this project.
 
 Required in `.env.local`:
 ```
-DATABASE_URL="file:./dev.db"          # or a Turso libsql:// URL
-TURSO_DATABASE_URL=...                # if using Turso cloud
-TURSO_AUTH_TOKEN=...                  # if using Turso cloud
+DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+DIRECT_URL="postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres"
 ADMIN_SECRET="imba-admin-2025"
 STRIPE_SECRET_KEY=...
 STRIPE_PUBLISHABLE_KEY=...
@@ -40,11 +39,15 @@ NEXT_PUBLIC_SITE_URL=...
 REGISTRATION_FEE=8000                 # in cents
 ```
 
+Both URLs are from Supabase dashboard → Project Settings → Database → Connection string.
+`DATABASE_URL` = Transaction pooler (port 6543) — used by the app.
+`DIRECT_URL` = Direct connection (port 5432) — used by `prisma migrate`.
+
 ## Architecture
 
-**Stack:** Next.js App Router, React 19, Tailwind CSS 4, Prisma 7 + LibSQL adapter, SQLite (local) / Turso (production), Stripe, Vercel Blob.
+**Stack:** Next.js App Router, React 19, Tailwind CSS 4, Prisma 7, PostgreSQL (Supabase), Stripe, Vercel Blob.
 
-**Database (`lib/db.ts`):** Prisma client wrapped in a global singleton using the LibSQL adapter. Converts `libsql://` URLs to `https://` for the HTTP client. The schema lives in `prisma/schema.prisma`.
+**Database (`lib/db.ts`):** Prisma client wrapped in a global singleton. The schema lives in `prisma/schema.prisma`.
 
 **Core models:** `Team`, `Player`, `Game`, `PlayerGameStat`, `Season`, `Registration`, `Announcement`, `AdminUser`, `SiteSetting`.
 

@@ -1,24 +1,13 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaLibSql } from '@prisma/adapter-libsql'
+import { PrismaPg } from '@prisma/adapter-pg'
 
 function createPrismaClient() {
-  let url = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL || 'file:./dev.db'
-  const authToken = process.env.TURSO_AUTH_TOKEN
-
-  // Convert libsql:// → https:// so the pure-JS HTTP transport is used
-  // (avoids needing platform-specific native binaries in serverless environments)
-  if (url.startsWith('libsql://')) url = url.replace('libsql://', 'https://')
-
-  const adapter = new PrismaLibSql({ url, authToken })
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
   return new PrismaClient({ adapter } as any)
 }
 
-// Dev: reuse singleton to avoid exhausting connections during hot reload.
-// Prod: always create fresh — prevents stale Turso HTTP connections from
-// blocking subsequent requests on warm serverless instances.
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
 
 export const prisma =
-  process.env.NODE_ENV === 'production'
-    ? createPrismaClient()
-    : (globalForPrisma.prisma ?? (globalForPrisma.prisma = createPrismaClient()))
+  globalForPrisma.prisma ??
+  (globalForPrisma.prisma = createPrismaClient())
