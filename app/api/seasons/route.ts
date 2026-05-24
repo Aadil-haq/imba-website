@@ -11,7 +11,9 @@ export async function GET() {
     })
 
     const seasons = groups.map(g => ({ season: g.season, league: g.league }))
-    return NextResponse.json(seasons)
+    return NextResponse.json(seasons, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+    })
   } catch (error) {
     console.error('Seasons GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch seasons' }, { status: 500 })

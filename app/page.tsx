@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const revalidate = 300 // cache homepage for 5 minutes
 
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
@@ -28,28 +28,32 @@ async function getDivisionStandings(activeSeasons: string[]): Promise<DivisionSt
   if (activeSeasons.length === 0) return []
   const results = await Promise.all(
     activeSeasons.map(async (seasonLabel) => {
-      const sampleGame = await prisma.game.findFirst({
-        where: { season: seasonLabel, played: true },
-        select: { league: true },
-      })
-      if (!sampleGame) return null
-      const teams = await prisma.team.findMany({
-        include: {
-          homeGames: { where: { played: true, season: seasonLabel } },
-          awayGames: { where: { played: true, season: seasonLabel } },
+      // Single lean query: fetch only played games for this season with team info
+      const games = await prisma.game.findMany({
+        where: { season: seasonLabel, played: true, week: { lt: 90 } },
+        select: {
+          homeScore: true, awayScore: true,
+          homeTeam: { select: { id: true, name: true, slug: true, color: true, logo: true, league: true } },
+          awayTeam: { select: { id: true, name: true, slug: true, color: true, logo: true } },
         },
+        take: 200,
       })
-      const standings = teams
-        .map(team => {
-          let wins = 0, losses = 0
-          team.homeGames.forEach(g => { if (g.homeScore !== null && g.awayScore !== null) { if (g.homeScore > g.awayScore) wins++; else losses++ } })
-          team.awayGames.forEach(g => { if (g.homeScore !== null && g.awayScore !== null) { if (g.awayScore > g.homeScore) wins++; else losses++ } })
-          return { id: team.id, name: team.name, slug: team.slug, color: team.color, logo: team.logo ?? null, wins, losses }
-        })
-        .filter(t => t.wins + t.losses > 0)
+      if (games.length === 0) return null
+      const league = games[0].homeTeam.league
+      const teamMap = new Map<string, { id: string; name: string; slug: string; color: string; logo: string | null; wins: number; losses: number }>()
+      for (const g of games) {
+        if (g.homeScore === null || g.awayScore === null) continue
+        const homeWon = g.homeScore > g.awayScore
+        for (const [team, won] of [[g.homeTeam, homeWon], [g.awayTeam, !homeWon]] as const) {
+          const entry = teamMap.get(team.id) ?? { id: team.id, name: team.name, slug: team.slug, color: team.color, logo: team.logo ?? null, wins: 0, losses: 0 }
+          won ? entry.wins++ : entry.losses++
+          teamMap.set(team.id, entry)
+        }
+      }
+      const standings = [...teamMap.values()]
         .sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : (b.wins / (b.wins + b.losses)) - (a.wins / (a.wins + a.losses)))
         .slice(0, 6)
-      return { season: seasonLabel, league: sampleGame.league, teams: standings }
+      return { season: seasonLabel, league, teams: standings }
     })
   )
   return results.filter(Boolean) as DivisionStandings[]
@@ -72,13 +76,14 @@ async function getHomeData() {
     prisma.announcement.findMany({ orderBy: { createdAt: 'desc' }, take: 3 }),
     prisma.game.findMany({
       where: { played: true },
-      select: { season: true },
-      distinct: ['season'],
+      select: { season: true, date: true },
       orderBy: { date: 'desc' },
+      take: 500,
     }),
   ])
 
-  const availableSeasons = seasonRows.map(r => r.season)
+  const seen = new Set<string>()
+  const availableSeasons = seasonRows.filter(r => seen.has(r.season) ? false : seen.add(r.season)).map(r => r.season)
   return { recentGames, upcomingGames, announcements, availableSeasons }
 }
 
