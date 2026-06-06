@@ -72,7 +72,7 @@ async function getHomeData() {
       orderBy: { date: 'asc' },
       take: 5,
     }),
-    prisma.announcement.findMany({ orderBy: { createdAt: 'desc' }, take: 3 }),
+    prisma.announcement.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
     prisma.game.findMany({
       where: { played: true },
       select: { season: true, date: true },
