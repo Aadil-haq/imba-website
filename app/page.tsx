@@ -52,7 +52,6 @@ async function getDivisionStandings(activeSeasons: string[]): Promise<DivisionSt
       }
       const standings = [...teamMap.values()]
         .sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : (b.wins / (b.wins + b.losses)) - (a.wins / (a.wins + a.losses)))
-        .slice(0, 6)
       return { season: seasonLabel, league, teams: standings }
     })
   )
@@ -90,10 +89,7 @@ async function getHomeData() {
 export default async function HomePage() {
   const s = await getSiteSettings()
   const activeSeasons: string[] = s.active_seasons ? JSON.parse(s.active_seasons) : []
-  const [{ recentGames, upcomingGames, announcements, availableSeasons }, divisionStandings] = await Promise.all([
-    getHomeData(),
-    getDivisionStandings(activeSeasons),
-  ])
+  const { recentGames, upcomingGames, announcements, availableSeasons } = await getHomeData()
 
   return (
     <div style={{ backgroundColor: '#0f0f0f', minHeight: '100vh' }}>
@@ -200,48 +196,11 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Right: leading standings card */}
-            {divisionStandings.length > 0 && (
-              <div style={{ backgroundColor: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ padding: '14px 18px', borderBottom: '1px solid #1e1e1e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ color: '#4A9FE3', fontSize: '10px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Current Season</div>
-                    <div style={{ color: '#fff', fontWeight: 800, fontSize: '15px', marginTop: '2px' }}>{divisionStandings[0].season}</div>
-                  </div>
-                  <Link href="/standings" style={{ color: '#4A9FE3', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>Full →</Link>
-                </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#0f0f0f' }}>
-                      {['#', 'Team', 'W', 'L', 'PCT'].map(h => (
-                        <th key={h} style={{ padding: '8px 14px', textAlign: h === 'Team' || h === '#' ? 'left' : 'center', color: '#333', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {divisionStandings[0].teams.map((team, i) => (
-                      <tr key={team.id} style={{ borderBottom: '1px solid #1a1a1a' }}>
-                        <td style={{ padding: '11px 14px', color: i < 2 ? '#4A9FE3' : '#444', fontWeight: 700, fontSize: '12px' }}>{i + 1}</td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <Link href={`/teams/${team.slug}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '7px' }}>
-                            {team.logo
-                              ? <img src={team.logo} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff' }} />
-                              : <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: team.color }} />
-                            }
-                            <span style={{ color: '#ddd', fontSize: '13px', fontWeight: 600 }}>{team.name}</span>
-                          </Link>
-                        </td>
-                        <td style={{ padding: '11px 14px', textAlign: 'center', color: '#27AE60', fontWeight: 700, fontSize: '13px' }}>{team.wins}</td>
-                        <td style={{ padding: '11px 14px', textAlign: 'center', color: '#e74c3c', fontWeight: 700, fontSize: '13px' }}>{team.losses}</td>
-                        <td style={{ padding: '11px 14px', textAlign: 'center', color: '#666', fontSize: '12px' }}>
-                          {(team.wins + team.losses) > 0 ? (team.wins / (team.wins + team.losses)).toFixed(3) : '.000'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {/* Right: stat leaders */}
+            <StatsLeaderboard
+              seasons={availableSeasons}
+              defaultSeason={activeSeasons[0] ?? availableSeasons[0] ?? ''}
+            />
           </div>
         </div>
       </section>
@@ -313,18 +272,11 @@ export default async function HomePage() {
               defaultSeason={activeSeasons[0] ?? availableSeasons[0] ?? ''}
             />
 
-            {/* Stats leaders + Announcements */}
+            {/* Announcements */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              {/* Interactive Stat Leaderboard */}
-              <StatsLeaderboard
-                seasons={availableSeasons}
-                defaultSeason={activeSeasons[0] ?? availableSeasons[0] ?? ''}
-              />
-
-              {/* Announcements */}
               {announcements.length > 0 && (
                 <div>
-                  <div style={{ color: '#4A9FE3', fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '14px' }}>Announcements</div>
+                  <div style={{ color: '#4A9FE3', fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '14px' }}>Sub Reports</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {announcements.map(ann => (
                       <div key={ann.id} style={{ backgroundColor: '#141414', border: '1px solid #1e1e1e', borderLeft: '3px solid #4A9FE3', borderRadius: '8px', padding: '14px 16px' }}>
