@@ -3,8 +3,8 @@ import { prisma } from '@/lib/db'
 import { checkAdminAuth } from '@/lib/auth'
 
 // POST — check all paid registrations' Stripe sessions for refunds.
-// For any that were refunded in Stripe, marks the registration as 'refunded'
-// and removes the player from their team roster.
+// For any that were refunded in Stripe, marks the registration as 'refunded'.
+// Does NOT touch player roster or stats — those are managed manually.
 export async function POST(request: Request) {
   if (!checkAdminAuth(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -62,27 +62,6 @@ export async function POST(request: Request) {
         where: { id: reg.id },
         data: { paymentStatus: 'refunded' },
       })
-
-      // Remove player from their team roster
-      if (reg.teamPref) {
-        try {
-          const team = await prisma.team.findFirst({ where: { name: reg.teamPref.trim() } })
-          if (team) {
-            const player = await prisma.player.findFirst({
-              where: { name: fullName, teamId: team.id },
-            })
-            if (player) {
-              await prisma.playerGameStat.deleteMany({ where: { playerId: player.id } })
-              await prisma.player.delete({ where: { id: player.id } })
-              results.push(`  → Removed ${fullName} from ${team.name}`)
-            } else {
-              results.push(`  → No roster entry found for ${fullName} on ${team.name}`)
-            }
-          }
-        } catch (e: any) {
-          results.push(`  → Failed to remove player: ${e.message}`)
-        }
-      }
 
       refundedCount++
     } catch (e: any) {
