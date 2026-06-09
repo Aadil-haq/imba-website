@@ -29,8 +29,15 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
 
   if (!game) notFound()
 
-  const homeStats = game.playerStats.filter(s => s.teamId === game.homeTeamId)
-  const awayStats = game.playerStats.filter(s => s.teamId === game.awayTeamId)
+  const isDnp = (s: typeof game.playerStats[0]) =>
+    s.points === 0 && s.rebounds === 0 && s.assists === 0 &&
+    s.steals === 0 && s.blocks === 0 && s.twoPtMade === 0 &&
+    s.threeMade === 0 && s.ftMade === 0 && (s.fouls ?? 0) === 0
+
+  const homeStats = game.playerStats.filter(s => s.teamId === game.homeTeamId && !isDnp(s))
+  const awayStats = game.playerStats.filter(s => s.teamId === game.awayTeamId && !isDnp(s))
+  const homeDnp  = game.playerStats.filter(s => s.teamId === game.homeTeamId && isDnp(s) && !s.player.isSub)
+  const awayDnp  = game.playerStats.filter(s => s.teamId === game.awayTeamId && isDnp(s) && !s.player.isSub)
 
   const homeWon = game.played && game.homeScore !== null && game.awayScore !== null && game.homeScore! > game.awayScore!
   const awayWon = game.played && game.homeScore !== null && game.awayScore !== null && game.awayScore! > game.homeScore!
@@ -49,8 +56,9 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
     { key: 'ftAtt',     label: 'FTA' },
   ]
 
-  function StatTable({ stats, teamName, teamColor }: {
+  function StatTable({ stats, dnpPlayers, teamName, teamColor }: {
     stats: typeof homeStats
+    dnpPlayers: typeof homeDnp
     teamName: string
     teamColor: string
   }) {
@@ -135,6 +143,15 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
             </tbody>
           </table>
         </div>
+        {/* DNP row */}
+        {dnpPlayers.length > 0 && (
+          <div style={{ padding: '10px 16px', borderTop: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ color: '#444', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', flexShrink: 0 }}>DNP —</span>
+            <span style={{ color: '#444', fontSize: '12px' }}>
+              {dnpPlayers.map(s => s.player.name).join(', ')}
+            </span>
+          </div>
+        )}
       </div>
     )
   }
@@ -219,8 +236,8 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
           <>
             <div style={{ color: '#4A9FE3', fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '20px' }}>Box Score</div>
             <div style={{ backgroundColor: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', overflow: 'hidden', padding: '20px' }}>
-              <StatTable stats={awayStats} teamName={game.awayTeam.name} teamColor={game.awayTeam.color} />
-              <StatTable stats={homeStats} teamName={game.homeTeam.name} teamColor={game.homeTeam.color} />
+              <StatTable stats={awayStats} dnpPlayers={awayDnp} teamName={game.awayTeam.name} teamColor={game.awayTeam.color} />
+              <StatTable stats={homeStats} dnpPlayers={homeDnp} teamName={game.homeTeam.name} teamColor={game.homeTeam.color} />
             </div>
           </>
         )}
