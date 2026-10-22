@@ -115,8 +115,16 @@ export default function RulesPage() {
           <Rule>Teams are selected to ensure competitive balance across all rosters</Rule>
           <Rule>Players must be <strong style={{ color: '#fff' }}>35 years of age or older</strong> to participate</Rule>
           <Rule highlight="warn">Registration fee must be paid before the first game to be eligible to play</Rule>
-          <Rule>Top teams at the end of the regular season will compete in a playoff round</Rule>
           <Rule>Standings: <strong style={{ color: '#fff' }}>record → head-to-head → point differential</strong></Rule>
+        </Section>
+
+        <Section title="🏆 35+ Draft — Playoffs" accent="#27AE60">
+          <Rule highlight="good">6 teams — top 2 seeds receive a <strong>first-round bye</strong></Rule>
+          <Rule>Play-In Round: <strong style={{ color: '#fff' }}>#3 vs #6</strong> and <strong style={{ color: '#fff' }}>#4 vs #5</strong></Rule>
+          <Rule>Semifinals: <strong style={{ color: '#fff' }}>winner of #4v#5 plays #1 seed</strong> · <strong style={{ color: '#fff' }}>winner of #3v#6 plays #2 seed</strong></Rule>
+          <Rule>Finals: the two semifinal winners meet for the championship</Rule>
+          <Rule>Standings: <strong style={{ color: '#fff' }}>record → head-to-head → point differential</strong></Rule>
+          <Rule highlight="warn">Game dates subject to change based on gym and referee availability</Rule>
         </Section>
 
         {/* ── D2 REC LEAGUE ──────────────────────────────────────────────── */}
@@ -137,15 +145,6 @@ export default function RulesPage() {
           <Rule>Two games will be played simultaneously on both courts</Rule>
           <Rule>The league will have <strong style={{ color: '#fff' }}>two certified referees</strong> per game</Rule>
           <Rule>This league is designed for <strong style={{ color: '#fff' }}>recreational level</strong> players — all skill levels welcome</Rule>
-        </Section>
-
-        <Section title="🏆 D2 Rec — Playoffs" accent="#4A9FE3">
-          <Rule highlight="good">All teams make the playoffs — single elimination bracket</Rule>
-          <Rule>Bottom seeds compete in a <strong style={{ color: '#fff' }}>Play-In Round</strong> before the main bracket</Rule>
-          <Rule highlight="warn">Play-In winners must be prepared to play twice on the same day</Rule>
-          <Rule>Quarterfinals, Semifinals &amp; Finals are played on the <strong style={{ color: '#fff' }}>big court</strong></Rule>
-          <Rule>Standings: <strong style={{ color: '#fff' }}>record → head-to-head → point differential</strong></Rule>
-          <Rule highlight="warn">Game dates subject to change based on gym, player and referee availability</Rule>
         </Section>
 
         <Section title="📐 D2 Rec — Competition Level" accent="#4A9FE3">
@@ -171,14 +170,6 @@ export default function RulesPage() {
           <Rule>The league will have <strong style={{ color: '#fff' }}>two certified referees</strong> per game</Rule>
           <Rule>Only <strong style={{ color: '#fff' }}>8 teams</strong> will be allowed to compete in D1</Rule>
           <Rule highlight="warn">Teams not meeting the competition level may be moved down to D2 at organizers' discretion</Rule>
-        </Section>
-
-        <Section title="🏆 D1 Comp — Playoffs & MCL" accent="#F5A623">
-          <Rule highlight="good">D1 serves as the <strong>qualifying league for MCL</strong> — Muslim Competitive League</Rule>
-          <Rule>Top performing teams at the end of the season will represent IMBA in MCL</Rule>
-          <Rule>Single elimination playoff bracket — seeded by regular season record</Rule>
-          <Rule>Standings: <strong style={{ color: '#fff' }}>record → head-to-head → point differential</strong></Rule>
-          <Rule highlight="warn">Game dates subject to change based on gym, player and referee availability</Rule>
         </Section>
 
         <Section title="📐 D1 Comp — Competition Level" accent="#F5A623">
