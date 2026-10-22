@@ -191,7 +191,7 @@ export default function RulesPage() {
         {/* ── SHARED RULES ───────────────────────────────────────────────── */}
         <Divider label="Rules — All Leagues" />
 
-        <Section title="⏱ Game Format" accent="#a855f7">
+        <Section title="⏱ Game Format (D1 &amp; D2)" accent="#a855f7">
           <Rule>Two <strong style={{ color: '#fff' }}>20-minute halves</strong></Rule>
           <Rule>Clock only stops in the <strong style={{ color: '#fff' }}>last two minutes</strong> of the second half</Rule>
           <Rule>Clock also stops on a made basket in the <strong style={{ color: '#fff' }}>last minute</strong></Rule>
@@ -203,6 +203,19 @@ export default function RulesPage() {
           <Rule highlight="danger">Six fouls → <strong>disqualified from the game</strong></Rule>
           <Rule>Jump balls decided by <strong style={{ color: '#fff' }}>possession arrow</strong></Rule>
           <Rule>Stats tracked: points, rebounds, assists, steals, blocks, 3-pointers made, free throws made, field goals made</Rule>
+          <Rule highlight="danger">A forfeit is an automatic loss with <strong>–25 point differential</strong></Rule>
+        </Section>
+
+        <Section title="⏱ Game Format (35+ Draft)" accent="#27AE60">
+          <Rule highlight="good"><strong>Half court</strong> — one basket, played on half the floor</Rule>
+          <Rule highlight="good"><strong>Make it, take it</strong> — scoring team keeps possession</Rule>
+          <Rule highlight="good">After a made basket, inbound from the <strong>top of the key</strong> — no check-up</Rule>
+          <Rule>After a defensive stop or turnover, ball must be cleared <strong style={{ color: '#fff' }}>behind the three-point line</strong> before attacking</Rule>
+          <Rule>Two <strong style={{ color: '#fff' }}>20-minute halves</strong> — same clock rules as D1/D2</Rule>
+          <Rule>Two timeouts per half</Rule>
+          <Rule>If tied after regulation: <strong style={{ color: '#fff' }}>3-minute overtime</strong>, 1 timeout, make it take it</Rule>
+          <Rule>Bonus after <strong style={{ color: '#fff' }}>7 team fouls</strong> · Double bonus after <strong style={{ color: '#fff' }}>10 team fouls</strong></Rule>
+          <Rule highlight="danger">Six fouls → <strong>disqualified from the game</strong></Rule>
           <Rule highlight="danger">A forfeit is an automatic loss with <strong>–25 point differential</strong></Rule>
         </Section>
 
