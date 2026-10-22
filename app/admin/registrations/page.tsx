@@ -10,13 +10,21 @@ interface Registration {
   jerseyNumber: string | null; jerseySize: string | null; discountCode: string | null
 }
 
+interface Captain {
+  id: string; teamName: string; division: string; league?: string; active?: boolean
+  captainName: string | null; captainEmail: string | null; captainPhone: string | null
+  rosterCount?: number; createdAt: string
+}
+
 export default function AdminRegistrationsPage() {
   const [regs, setRegs] = useState<Registration[]>([])
+  const [captains, setCaptains] = useState<Captain[]>([])
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
   const [msgType, setMsgType] = useState<'success' | 'error'>('success')
   const [filter, setFilter] = useState('all')
-  const [view, setView] = useState<'registrations' | 'jerseys'>('registrations')
+  const [sectionFilter, setSectionFilter] = useState('all')
+  const [view, setView] = useState<'registrations' | 'jerseys' | 'captains'>('registrations')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [rerostering, setRerostering] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -29,7 +37,12 @@ export default function AdminRegistrationsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  const loadCaptains = async () => {
+    const data = await fetch('/api/admin/captains', { headers: { Authorization: 'Bearer imba-admin-2025' } }).then(r => r.json())
+    setCaptains(Array.isArray(data) ? data : [])
+  }
+
+  useEffect(() => { load(); loadCaptains() }, [])
 
   const showMsg = (text: string, type: 'success' | 'error' = 'success') => {
     setMsg(text); setMsgType(type)
@@ -132,7 +145,7 @@ export default function AdminRegistrationsPage() {
   }
 
   const exportJerseyCSV = () => {
-    const paid = regs.filter(r => r.paymentStatus === 'paid')
+    const paid = sectionScoped.filter(r => r.paymentStatus === 'paid')
     const rows = [
       ['Name', 'Team', 'Season', 'Jersey #', 'Jersey Size', 'Position'].join(','),
       ...paid.map(r => [
@@ -147,17 +160,35 @@ export default function AdminRegistrationsPage() {
     const blob = new Blob([rows.join('\n')], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'imba-jerseys.csv'; a.click()
+    const sectionSuffix = sectionFilter === 'all' ? '' : `-${sectionFilter.split('||')[0].toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+    a.href = url; a.download = `imba-jerseys${sectionSuffix}.csv`; a.click()
     URL.revokeObjectURL(url)
   }
 
-  const discountRegs = regs.filter(r => r.discountCode != null || (r.paymentStatus === 'paid' && r.amount < 8000))
-  const refundedRegs = regs.filter(r => r.paymentStatus === 'refunded')
-  const filtered = filter === 'all' ? regs
+  // Full price varies by league — 35+ Draft is $115, older Rec/Comp league registrations were $80
+  const fullPriceFor = (league: string) => league?.includes('35+') ? 11500 : 8000
+
+  // Section = league + season combined (e.g. "35+ Draft · Summer 2026", "D2 Comp Division · Summer 2026") —
+  // season alone isn't specific enough since multiple leagues share the same season label.
+  const sectionKey = (r: Registration) => `${r.league}||${r.season}`
+  const sectionLabel = (r: Registration) => `${r.league} · ${r.season}`
+  const sectionCounts = new Map<string, { label: string; count: number }>()
+  for (const r of regs) {
+    const key = sectionKey(r)
+    const existing = sectionCounts.get(key)
+    if (existing) existing.count++
+    else sectionCounts.set(key, { label: sectionLabel(r), count: 1 })
+  }
+  const sections = Array.from(sectionCounts.entries()).sort((a, b) => b[1].count - a[1].count)
+  const sectionScoped = sectionFilter === 'all' ? regs : regs.filter(r => sectionKey(r) === sectionFilter)
+
+  const discountRegs = sectionScoped.filter(r => r.discountCode != null || (r.paymentStatus === 'paid' && r.amount < fullPriceFor(r.league)))
+  const refundedRegs = sectionScoped.filter(r => r.paymentStatus === 'refunded')
+  const filtered = filter === 'all' ? sectionScoped
     : filter === 'discount' ? discountRegs
     : filter === 'refunded' ? refundedRegs
-    : regs.filter(r => r.paymentStatus === filter)
-  const paidRegs = regs.filter(r => r.paymentStatus === 'paid')
+    : sectionScoped.filter(r => r.paymentStatus === filter)
+  const paidRegs = sectionScoped.filter(r => r.paymentStatus === 'paid')
   const totalRevenue = paidRegs.reduce((sum, r) => sum + r.amount, 0)
   const totalRefunded = refundedRegs.reduce((sum, r) => sum + r.amount, 0)
   const netRevenue = totalRevenue - totalRefunded
@@ -201,6 +232,27 @@ export default function AdminRegistrationsPage() {
           </div>
         </div>
 
+        {/* Section selector */}
+        {sections.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+            <label style={{ color: '#666', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>Section</label>
+            <select
+              value={sectionFilter}
+              onChange={e => setSectionFilter(e.target.value)}
+              style={{
+                backgroundColor: '#1a1a1a', color: '#fff', border: '1px solid #2a2a2a',
+                borderRadius: '6px', padding: '8px 12px', fontSize: '14px', fontWeight: 700,
+                outline: 'none', cursor: 'pointer', minWidth: '260px',
+              }}
+            >
+              <option value="all">All Sections ({regs.length})</option>
+              {sections.map(([key, { label, count }]) => (
+                <option key={key} value={key}>{label} ({count})</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {msg && (
           <div style={{
             backgroundColor: msgType === 'success' ? '#1a4731' : '#4a1919',
@@ -213,9 +265,9 @@ export default function AdminRegistrationsPage() {
         {/* Summary Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '16px', marginBottom: '24px' }}>
           {[
-            { label: 'Total', value: regs.length, color: '#888' },
+            { label: 'Total', value: sectionScoped.length, color: '#888' },
             { label: 'Paid', value: paidRegs.length, color: '#27AE60' },
-            { label: 'Pending', value: regs.filter(r => r.paymentStatus === 'pending').length, color: '#F5A623' },
+            { label: 'Pending', value: sectionScoped.filter(r => r.paymentStatus === 'pending').length, color: '#F5A623' },
             { label: 'Refunded', value: refundedRegs.length, color: '#e74c3c', sub: totalRefunded > 0 ? `-$${(totalRefunded / 100).toFixed(2)}` : undefined },
             { label: 'Net Revenue', value: `$${(netRevenue / 100).toFixed(2)}`, color: '#4A9FE3' },
           ].map(card => (
@@ -229,20 +281,69 @@ export default function AdminRegistrationsPage() {
 
         {/* View tabs */}
         <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid #2a2a2a', paddingBottom: '0' }}>
-          {(['registrations', 'jerseys'] as const).map(v => (
+          {(['registrations', 'jerseys', 'captains'] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{
               padding: '10px 20px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '13px',
               backgroundColor: 'transparent',
               color: view === v ? '#4A9FE3' : '#555',
               borderBottom: view === v ? '2px solid #4A9FE3' : '2px solid transparent',
             }}>
-              {v === 'registrations' ? 'All Registrations' : '👕 Jersey List'}
+              {v === 'registrations' ? 'All Registrations' : v === 'jerseys' ? '👕 Jersey List' : `🧢 Team Captains (${captains.length})`}
             </button>
           ))}
         </div>
 
         {loading ? (
           <div style={{ textAlign: 'center', color: '#555', padding: '48px' }}>Loading...</div>
+        ) : view === 'captains' ? (
+          /* ── Team Captains View ── */
+          <div>
+            <p style={{ color: '#555', fontSize: '13px', marginBottom: '16px' }}>
+              Everyone who has registered a team through the D1/D2 captain sign-up (imbaonline.com/team-signup), newest first.
+            </p>
+            <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '12px', overflow: 'hidden', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#111', borderBottom: '2px solid #4A9FE3' }}>
+                    {['Team', 'Captain', 'Phone', 'Email', 'Division', 'Signed Up'].map(h => (
+                      <th key={h} style={{ padding: '12px 14px', textAlign: 'left', color: '#4A9FE3', fontWeight: 700, fontSize: '12px' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {captains.map((c, i) => {
+                    const isD1 = c.division?.includes('D1') || c.division?.includes('Comp')
+                    return (
+                    <tr key={c.id} style={{ backgroundColor: i % 2 === 0 ? '#1a1a1a' : '#141414', borderBottom: '1px solid #222' }}>
+                      <td style={{ padding: '12px 14px' }}>
+                        <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>{c.teamName}</div>
+                      </td>
+                      <td style={{ padding: '12px 14px', color: '#ccc', fontSize: '14px' }}>{c.captainName ?? <span style={{ color: '#444' }}>—</span>}</td>
+                      <td style={{ padding: '12px 14px', color: '#ccc', fontSize: '13px' }}>{c.captainPhone ?? <span style={{ color: '#444' }}>—</span>}</td>
+                      <td style={{ padding: '12px 14px', color: '#ccc', fontSize: '13px' }}>{c.captainEmail ?? <span style={{ color: '#444' }}>—</span>}</td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <span style={{
+                          backgroundColor: isD1 ? '#2a1a00' : '#0d1a2a',
+                          color: isD1 ? '#F5A623' : '#4A9FE3',
+                          padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 700,
+                        }}>
+                          {isD1 ? 'D1 Comp' : 'D2'}
+                        </span>
+                        <div style={{ color: '#555', fontSize: '11px', marginTop: '3px' }}>Winter 2026</div>
+                      </td>
+                      <td style={{ padding: '12px 14px', color: '#555', fontSize: '12px' }}>
+                        {new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
+                    </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {captains.length === 0 && (
+                <div style={{ textAlign: 'center', color: '#555', padding: '32px' }}>No captains have signed up yet</div>
+              )}
+            </div>
+          </div>
         ) : view === 'jerseys' ? (
           /* ── Jersey List View ── */
           <div>
@@ -303,9 +404,9 @@ export default function AdminRegistrationsPage() {
 
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
               {[
-                { key: 'all', label: 'All', count: regs.length, activeColor: '#4A9FE3' },
-                { key: 'pending', label: 'Pending', count: regs.filter(r => r.paymentStatus === 'pending').length, activeColor: '#F5A623' },
-                { key: 'paid', label: 'Paid', count: regs.filter(r => r.paymentStatus === 'paid').length, activeColor: '#27AE60' },
+                { key: 'all', label: 'All', count: sectionScoped.length, activeColor: '#4A9FE3' },
+                { key: 'pending', label: 'Pending', count: sectionScoped.filter(r => r.paymentStatus === 'pending').length, activeColor: '#F5A623' },
+                { key: 'paid', label: 'Paid', count: sectionScoped.filter(r => r.paymentStatus === 'paid').length, activeColor: '#27AE60' },
                 { key: 'discount', label: '🏷 Discount', count: discountRegs.length, activeColor: '#a855f7' },
                 { key: 'refunded', label: '🔴 Refunded', count: refundedRegs.length, activeColor: '#e74c3c' },
               ].map(({ key, label, count, activeColor }) => (
@@ -344,11 +445,11 @@ export default function AdminRegistrationsPage() {
                       </td>
                       <td style={{ padding: '12px 14px' }}>
                         <span style={{
-                          backgroundColor: reg.league?.includes('Comp') ? '#2a1a00' : '#0d1a0d',
-                          color: reg.league?.includes('Comp') ? '#F5A623' : '#27AE60',
+                          backgroundColor: reg.league?.includes('Comp') ? '#2a1a00' : reg.league?.includes('Draft') ? '#1a1a3a' : '#0d1a0d',
+                          color: reg.league?.includes('Comp') ? '#F5A623' : reg.league?.includes('Draft') ? '#8B5CF6' : '#27AE60',
                           padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, display: 'inline-block',
                         }}>
-                          {reg.league?.includes('Comp') ? '🏆 Comp' : '🏀 Rec'}
+                          {reg.league?.includes('Comp') ? '🏆 Comp' : reg.league?.includes('Draft') ? '🎯 Draft' : '🏀 Rec'}
                         </span>
                         {reg.teamPref && <div style={{ color: '#555', fontSize: '11px', marginTop: '4px' }}>Pref: {reg.teamPref}</div>}
                       </td>
@@ -358,19 +459,19 @@ export default function AdminRegistrationsPage() {
                       </td>
                       <td style={{ padding: '12px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span style={{ color: reg.amount < 8000 ? '#27AE60' : '#ccc', fontSize: '14px', fontWeight: 700 }}>
+                          <span style={{ color: reg.amount < fullPriceFor(reg.league) ? '#27AE60' : '#ccc', fontSize: '14px', fontWeight: 700 }}>
                             ${(reg.amount / 100).toFixed(2)}
                           </span>
                           {reg.amount === 0 && (
                             <span style={{ backgroundColor: '#1a4731', color: '#27AE60', border: '1px solid #27AE60', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 800, letterSpacing: '0.05em' }}>FREE</span>
                           )}
-                          {reg.amount > 0 && reg.amount < 8000 && (
+                          {reg.amount > 0 && reg.amount < fullPriceFor(reg.league) && (
                             <span style={{ backgroundColor: '#2a1500', color: '#F5A623', border: '1px solid #F5A623', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 800 }}>
-                              {Math.round((1 - reg.amount / 8000) * 100)}% OFF
+                              {Math.round((1 - reg.amount / fullPriceFor(reg.league)) * 100)}% OFF
                             </span>
                           )}
                         </div>
-                        {(reg.discountCode || reg.amount < 8000) && (
+                        {(reg.discountCode || reg.amount < fullPriceFor(reg.league)) && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                             <span style={{ backgroundColor: '#1e0a3c', color: '#a855f7', border: '1px solid #a855f7', borderRadius: '4px', padding: '2px 7px', fontSize: '10px', fontWeight: 800, letterSpacing: '0.04em' }}>
                               🏷 {reg.discountCode ?? 'DISCOUNT'}
