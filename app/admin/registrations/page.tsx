@@ -22,7 +22,7 @@ export default function AdminRegistrationsPage() {
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
   const [msgType, setMsgType] = useState<'success' | 'error'>('success')
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState('paid')
   const [sectionFilter, setSectionFilter] = useState('all')
   const [view, setView] = useState<'registrations' | 'jerseys' | 'captains'>('registrations')
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -404,11 +404,11 @@ export default function AdminRegistrationsPage() {
 
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
               {[
-                { key: 'all', label: 'All', count: sectionScoped.length, activeColor: '#4A9FE3' },
-                { key: 'pending', label: 'Pending', count: sectionScoped.filter(r => r.paymentStatus === 'pending').length, activeColor: '#F5A623' },
-                { key: 'paid', label: 'Paid', count: sectionScoped.filter(r => r.paymentStatus === 'paid').length, activeColor: '#27AE60' },
+                { key: 'paid', label: '✅ Paid', count: sectionScoped.filter(r => r.paymentStatus === 'paid').length, activeColor: '#27AE60' },
+                { key: 'pending', label: '⏳ Pending', count: sectionScoped.filter(r => r.paymentStatus === 'pending').length, activeColor: '#F5A623' },
                 { key: 'discount', label: '🏷 Discount', count: discountRegs.length, activeColor: '#a855f7' },
                 { key: 'refunded', label: '🔴 Refunded', count: refundedRegs.length, activeColor: '#e74c3c' },
+                { key: 'all', label: 'All', count: sectionScoped.length, activeColor: '#4A9FE3' },
               ].map(({ key, label, count, activeColor }) => (
                 <button key={key} onClick={() => setFilter(key)} style={{
                   padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 700, fontSize: '13px',
