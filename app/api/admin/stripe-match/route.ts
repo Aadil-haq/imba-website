@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         },
       })
 
-      try { await addPlayerFromRegistration({ ...reg, paymentStatus: 'paid' }) } catch {}
+      try { await addPlayerFromRegistration(reg) } catch {}
 
       results.push(`✓ ${reg.firstName} ${reg.lastName} (${reg.email}) → paid via ${pi.id}`)
       byId.delete(reg.id)
