@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { put } from '@vercel/blob'
 import { prisma } from '@/lib/db'
 import { checkAdminAuth } from '@/lib/auth'
 
@@ -17,25 +18,23 @@ export async function POST(request: Request) {
     if (!file || !teamId) {
       return NextResponse.json({ error: 'Missing file or teamId' }, { status: 400 })
     }
-
     if (!file.type.startsWith('image/')) {
       return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
     }
-
     if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: 'Image must be under 2 MB' }, { status: 400 })
+      return NextResponse.json({ error: 'Image must be under 5 MB' }, { status: 400 })
     }
 
-    const buffer = await file.arrayBuffer()
-    const base64 = Buffer.from(buffer).toString('base64')
-    const dataUrl = `data:${file.type};base64,${base64}`
-
-    await prisma.team.update({
-      where: { id: teamId },
-      data: { logo: dataUrl },
+    const ext = file.name.split('.').pop() || 'png'
+    const { url } = await put(`logos/${teamId}.${ext}`, file, {
+      access: 'public',
+      addRandomSuffix: false,
+      allowOverwrite: true,
     })
 
-    return NextResponse.json({ url: dataUrl })
+    await prisma.team.update({ where: { id: teamId }, data: { logo: url } })
+
+    return NextResponse.json({ url })
   } catch (error) {
     console.error('Logo upload error:', error)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
