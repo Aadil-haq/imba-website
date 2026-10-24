@@ -26,7 +26,8 @@ export async function POST(request: Request) {
     }
 
     const ext = file.name.split('.').pop() || 'png'
-    const { url } = await put(`logos/${teamId}.${ext}`, file, {
+    const ts = Date.now()
+    const { url } = await put(`logos/${teamId}-${ts}.${ext}`, file, {
       access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
