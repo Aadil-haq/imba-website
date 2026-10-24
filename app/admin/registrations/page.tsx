@@ -28,6 +28,7 @@ export default function AdminRegistrationsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [rerostering, setRerostering] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [matchingStripe, setMatchingStripe] = useState(false)
   const [refundingId, setRefundingId] = useState<string | null>(null)
   const [syncingRefunds, setSyncingRefunds] = useState(false)
 
@@ -88,6 +89,22 @@ export default function AdminRegistrationsPage() {
     if (res.ok) { showMsg('Registration removed'); load() }
     else showMsg('Failed to remove', 'error')
     setDeletingId(null)
+  }
+
+  const matchFromStripe = async () => {
+    setMatchingStripe(true)
+    const res = await fetch('/api/admin/stripe-match', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer imba-admin-2025' },
+    })
+    const data = await res.json()
+    setMatchingStripe(false)
+    if (data.ok) {
+      showMsg(`✓ Matched ${data.matched} pending → paid from Stripe`)
+      load()
+    } else {
+      showMsg(data.error || 'Match failed', 'error')
+    }
   }
 
   const syncFromStripe = async () => {
@@ -202,6 +219,13 @@ export default function AdminRegistrationsPage() {
             <p style={{ color: '#555', fontSize: '14px' }}>Manage player registrations · Only mark paid after payment is confirmed</p>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={matchFromStripe}
+              disabled={matchingStripe}
+              style={{ backgroundColor: matchingStripe ? '#2a2a2a' : '#1a2a1a', color: matchingStripe ? '#555' : '#27AE60', border: '1px solid #27AE60', borderRadius: '8px', padding: '10px 18px', fontWeight: 700, fontSize: '13px', cursor: matchingStripe ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+            >
+              {matchingStripe ? '⏳ Matching...' : '🔗 Fix Pending → Paid'}
+            </button>
             <button
               onClick={syncFromStripe}
               disabled={syncing}
