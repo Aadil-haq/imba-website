@@ -23,8 +23,8 @@ export async function POST(request: Request) {
   // Create the two promo codes
   for (const code of ['IMBACOMMISHCODE', 'IMBAVOLUNTEERCODE']) {
     try {
-      const promo = await (stripe.promotionCodes.create as any)({
-        coupon: coupon.id,
+      const promo = await stripe.promotionCodes.create({
+        promotion: { type: 'coupon', coupon: coupon.id },
         code,
       })
       results[code] = promo.id
