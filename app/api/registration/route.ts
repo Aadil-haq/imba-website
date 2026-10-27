@@ -55,6 +55,7 @@ export async function POST(request: Request) {
       ? 'Winter 2026'
       : await getActiveSeasonForLeague(league)
 
+    const isFree = body.discountCode && body.amount === 0
     const registration = await prisma.registration.create({
       data: {
         firstName: body.firstName,
@@ -68,11 +69,17 @@ export async function POST(request: Request) {
         jerseyNumber: body.jerseyNumber || null,
         jerseySize: body.jerseySize || null,
         paymentMethod: 'stripe',
-        paymentStatus: 'pending',
+        paymentStatus: isFree ? 'paid' : 'pending',
         amount: body.amount ?? 8000,
         season,
+        ...(body.discountCode ? { discountCode: body.discountCode } : {}),
       },
     })
+
+    if (isFree) {
+      const { addPlayerFromRegistration } = await import('@/app/api/admin/registrations/route')
+      try { await addPlayerFromRegistration(registration) } catch {}
+    }
 
     return NextResponse.json(registration, { status: 201 })
   } catch (err: unknown) {

@@ -63,12 +63,13 @@ const stripeAppearance = {
 }
 
 // ── Embedded payment form (uses Stripe hooks, must be inside <Elements>) ──
-function PaymentForm({ onBack, leagueLabel }: { onBack: () => void; leagueLabel: string }) {
+function PaymentForm({ onBack, leagueLabel, finalAmount }: { onBack: () => void; leagueLabel: string; finalAmount: number }) {
   const stripe = useStripe()
   const elements = useElements()
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
   const [hasExpressOptions, setHasExpressOptions] = useState(false)
+  const displayPrice = `$${(finalAmount / 100).toFixed(0)}`
 
   const confirm = async () => {
     if (!stripe || !elements) return
@@ -90,7 +91,7 @@ function PaymentForm({ onBack, leagueLabel }: { onBack: () => void; leagueLabel:
     <form onSubmit={handlePay}>
       <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '14px', padding: '28px', marginBottom: '20px' }}>
         <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '17px', marginBottom: '4px' }}>Payment</h3>
-        <p style={{ color: '#555', fontSize: '13px', marginBottom: '24px' }}>{leagueLabel} registration · $80.00</p>
+        <p style={{ color: '#555', fontSize: '13px', marginBottom: '24px' }}>{leagueLabel} registration · {displayPrice}</p>
 
         {/* Apple Pay / Google Pay only — hide Amazon Pay and others */}
         <ExpressCheckoutElement
@@ -137,7 +138,7 @@ function PaymentForm({ onBack, leagueLabel }: { onBack: () => void; leagueLabel:
           ← Back
         </button>
         <button type="submit" disabled={!stripe || paying} style={{ flex: 1, backgroundColor: (!stripe || paying) ? '#2a2a2a' : '#4A9FE3', color: '#fff', fontWeight: 800, fontSize: '17px', padding: '16px', borderRadius: '10px', border: 'none', cursor: (!stripe || paying) ? 'not-allowed' : 'pointer', transition: 'background-color 0.2s' }}>
-          {paying ? 'Processing...' : 'Pay $80 →'}
+          {paying ? 'Processing...' : `Pay ${displayPrice} →`}
         </button>
       </div>
     </form>
@@ -181,6 +182,27 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [waiverChecked, setWaiverChecked] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [discountInput, setDiscountInput] = useState('')
+  const [discountState, setDiscountState] = useState<null | 'checking' | { valid: true; percentOff: number; amountOff: number; code: string } | { valid: false; error: string }>(null)
+  const [finalAmount, setFinalAmount] = useState(8000)
+
+  const applyDiscount = async () => {
+    const code = discountInput.trim().toUpperCase()
+    if (!code) return
+    setDiscountState('checking')
+    const res = await fetch(`/api/stripe/validate-promo?code=${encodeURIComponent(code)}`)
+    const data = await res.json()
+    if (data.valid) {
+      const pct = data.percentOff ?? 0
+      const off = data.amountOff ?? 0
+      const discounted = pct === 100 ? 0 : off ? Math.max(0, 8000 - off) : Math.round(8000 * (1 - pct / 100))
+      setDiscountState({ valid: true, percentOff: pct, amountOff: off, code: data.code })
+      setFinalAmount(discounted)
+    } else {
+      setDiscountState({ valid: false, error: data.error ?? 'Invalid code' })
+      setFinalAmount(8000)
+    }
+  }
 
   const selectedLeague = LEAGUES.find(l => l.id === selectedLeagueId)
 
@@ -205,21 +227,35 @@ export default function RegisterPage() {
     if (!selectedLeagueId) return
     if (!validate()) return
     setLoading(true)
+    const appliedCode = discountState && discountState !== 'checking' && discountState.valid ? discountState.code : undefined
     try {
       const regRes = await fetch('/api/registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, league: selectedLeagueId, paymentMethod: 'stripe', amount: 8000, teamPref: form.teamPref || null }),
+        body: JSON.stringify({
+          ...form,
+          league: selectedLeagueId,
+          paymentMethod: 'stripe',
+          amount: finalAmount,
+          teamPref: form.teamPref || null,
+          ...(appliedCode ? { discountCode: appliedCode } : {}),
+        }),
       })
       const regData = await regRes.json().catch(() => ({ error: `Server error (${regRes.status})` }))
       if (!regRes.ok) throw new Error(regData.error || 'Failed to register')
+
+      // 100% off — skip payment entirely
+      if (finalAmount === 0) {
+        window.location.href = '/register/success'
+        return
+      }
 
       const piRes = await fetch('/api/stripe/payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           registrationId: regData.id,
-          amount: 8000,
+          amount: finalAmount,
           email: form.email,
           firstName: form.firstName,
           lastName: form.lastName,
@@ -288,7 +324,7 @@ export default function RegisterPage() {
             {/* ── Step 2: Embedded payment ── */}
             {clientSecret ? (
               <Elements stripe={stripePromise} options={{ clientSecret, appearance: stripeAppearance }}>
-                <PaymentForm onBack={handleBack} leagueLabel={selectedLeague?.label ?? ''} />
+                <PaymentForm onBack={handleBack} leagueLabel={selectedLeague?.label ?? ''} finalAmount={finalAmount} />
               </Elements>
             ) : (
               /* ── Step 1: Registration form ── */
@@ -462,8 +498,44 @@ export default function RegisterPage() {
                   {errors.waiver && <div style={{ color: '#e74c3c', fontSize: '12px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}><span>⚠</span> {errors.waiver}</div>}
                 </div>
 
+                {/* Discount Code */}
+                <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '14px', padding: '20px', marginBottom: '16px' }}>
+                  <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '15px', marginBottom: '12px' }}>Discount Code</h3>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={discountInput}
+                      onChange={e => { setDiscountInput(e.target.value.toUpperCase()); setDiscountState(null); setFinalAmount(8000) }}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), applyDiscount())}
+                      placeholder="Enter code"
+                      style={{ ...inputStyle(), flex: 1, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={applyDiscount}
+                      disabled={!discountInput.trim() || discountState === 'checking'}
+                      style={{ backgroundColor: '#2a2a2a', color: '#fff', fontWeight: 700, fontSize: '14px', padding: '11px 18px', borderRadius: '8px', border: '1px solid #444', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      {discountState === 'checking' ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                  {discountState && discountState !== 'checking' && (
+                    discountState.valid ? (
+                      <div style={{ marginTop: '10px', color: '#27AE60', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        ✓ {discountState.percentOff === 100 ? 'Free registration — $0.00' : `${discountState.percentOff}% off — $${(finalAmount / 100).toFixed(2)}`}
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: '10px', color: '#e74c3c', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        ✗ {discountState.error}
+                      </div>
+                    )
+                  )}
+                </div>
+
                 <button type="submit" disabled={loading} style={{ width: '100%', backgroundColor: loading ? '#2a2a2a' : '#4A9FE3', color: '#fff', fontWeight: 800, fontSize: '17px', padding: '16px', borderRadius: '10px', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', transition: 'background-color 0.2s' }}>
-                  {loading ? 'Setting up payment...' : `Continue to Payment →`}
+                  {loading
+                    ? (finalAmount === 0 ? 'Completing registration...' : 'Setting up payment...')
+                    : finalAmount === 0 ? 'Complete Registration (Free) →' : `Continue to Payment — $${(finalAmount / 100).toFixed(0)} →`}
                 </button>
                 </>)}
               </form>
