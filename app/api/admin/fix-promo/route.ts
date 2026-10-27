@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   // If max_redemptions is set, deactivate and recreate without it
   if (existing.max_redemptions !== null && existing.max_redemptions !== undefined) {
     await stripe.promotionCodes.update(existing.id, { active: false })
-    const couponId = (existing.coupon as any)?.id ?? existing.coupon
+    const couponId = ((existing as any).coupon as any)?.id ?? (existing as any).coupon
     const newPromo = await stripe.promotionCodes.create({
       promotion: { type: 'coupon', coupon: couponId },
       code: 'IMBACOMMISHCODE',
