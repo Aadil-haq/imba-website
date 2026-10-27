@@ -19,7 +19,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ valid: false, error: 'Invalid or expired code' })
     }
 
-    const coupon = (promo as any).coupon as any
+    // Stripe v22 moved coupon under promo.promotion.coupon
+    const promoObj = promo as any
+    const coupon = promoObj.promotion?.coupon ?? promoObj.coupon ?? {}
     const percentOff: number = coupon?.percent_off ?? 0
     const amountOff: number = coupon?.amount_off ?? 0
 
