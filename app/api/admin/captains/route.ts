@@ -16,6 +16,18 @@ async function ensureTable() {
   `)
 }
 
+export async function DELETE(request: Request) {
+  if (!checkAdminAuth(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  await ensureTable()
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  await prisma.captainSignup.delete({ where: { id } })
+  return NextResponse.json({ ok: true })
+}
+
 export async function PATCH(request: Request) {
   if (!checkAdminAuth(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
