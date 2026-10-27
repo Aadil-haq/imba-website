@@ -20,7 +20,7 @@ export async function addPlayerFromRegistration(reg: {
   // Auto-create team if it doesn't exist yet
   if (allMatching.length === 0) {
     const slug = reg.teamPref.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now()
-    const league = reg.league?.includes('Comp') ? 'Comp' : 'Rec'
+    const league = reg.league || '35+ Draft'
     const newTeam = await prisma.team.create({
       data: { name: reg.teamPref.trim(), slug, color: '#4A9FE3', league },
     })
@@ -77,9 +77,15 @@ export async function PATCH(request: Request) {
   }
   try {
     const body = await request.json()
+    const updateData: Record<string, unknown> = {}
+    if (body.paymentStatus !== undefined) updateData.paymentStatus = body.paymentStatus
+    if (body.amount !== undefined) updateData.amount = body.amount
+    if (body.season !== undefined) updateData.season = body.season
+    if (body.league !== undefined) updateData.league = body.league
+
     const reg = await prisma.registration.update({
       where: { id: body.id },
-      data: { paymentStatus: body.paymentStatus },
+      data: updateData,
     })
 
     // Auto-roster when marking paid
