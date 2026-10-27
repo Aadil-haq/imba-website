@@ -11,6 +11,8 @@ const navLinks = [
   { href: '/stats', label: 'Stats' },
   { href: '/teams', label: 'Teams' },
   { href: '/rules', label: 'Rules' },
+  { href: '/team-signup', label: 'Captain Sign-Up' },
+  { href: '/register', label: 'Sign Up' },
 ]
 
 export default function Navbar() {

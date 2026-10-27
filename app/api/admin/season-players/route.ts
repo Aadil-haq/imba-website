@@ -26,34 +26,34 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Step 1: find distinct playerIds who have stats for this team in this season
+    // Primary: return only players currently on the season roster
+    const rosterPlayers = await prisma.player.findMany({
+      where: { teamId, isSub: false, season },
+      include: { team: true },
+      orderBy: { number: 'asc' },
+    })
+
+    if (rosterPlayers.length > 0) {
+      return NextResponse.json({ players: rosterPlayers, source: 'roster' })
+    }
+
+    // Fallback: brand-new season with no season tags yet — use stat-based lookup
     const statRows = await prisma.playerGameStat.findMany({
-      where: {
-        teamId,
-        game: { season },
-        player: { isSub: false },
-      },
+      where: { teamId, game: { season }, player: { isSub: false } },
       select: { playerId: true },
       distinct: ['playerId'],
     })
 
     if (statRows.length > 0) {
-      const playerIds = statRows.map(r => r.playerId)
-      const players = await prisma.player.findMany({
-        where: { id: { in: playerIds }, isSub: false },
+      const statPlayers = await prisma.player.findMany({
+        where: { id: { in: statRows.map(r => r.playerId) }, isSub: false },
         include: { team: true },
         orderBy: { number: 'asc' },
       })
-      return NextResponse.json({ players, source: 'season' })
+      return NextResponse.json({ players: statPlayers, source: 'stats' })
     }
 
-    // Step 2: fallback — current roster for this team
-    const players = await prisma.player.findMany({
-      where: { teamId, isSub: false },
-      include: { team: true },
-      orderBy: { number: 'asc' },
-    })
-    return NextResponse.json({ players, source: 'roster' })
+    return NextResponse.json({ players: [], source: 'empty' })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

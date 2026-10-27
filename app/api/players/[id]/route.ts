@@ -52,7 +52,17 @@ export async function GET(
 
     const teamsMap = new Map<string, { id: string; name: string; color: string; slug: string; logo: string | null; seasons: Set<string> }>()
 
+    const isDnp = (s: { points: number; rebounds: number; assists: number; steals: number; blocks: number; twoPtMade: number; threeMade: number; ftMade: number }) =>
+      s.points === 0 && s.rebounds === 0 && s.assists === 0 && s.steals === 0 && s.blocks === 0 && s.twoPtMade === 0 && s.threeMade === 0 && s.ftMade === 0
+
     for (const stat of playedStats) {
+      if (!teamsMap.has(stat.teamId)) {
+        teamsMap.set(stat.teamId, { id: stat.teamId, name: stat.team.name, color: stat.team.color, slug: stat.team.slug, logo: (stat.team as any).logo ?? null, seasons: new Set() })
+      }
+      teamsMap.get(stat.teamId)!.seasons.add(stat.game.season)
+
+      if (isDnp(stat)) continue
+
       const key = `${stat.game.season}__${stat.game.league}__${stat.teamId}`
       if (!seasonMap.has(key)) {
         seasonMap.set(key, {
@@ -75,11 +85,6 @@ export async function GET(
       s.twoPtMade += stat.twoPtMade; s.twoPtAtt += stat.twoPtAtt
       s.threeMade += stat.threeMade; s.threeAtt += stat.threeAtt
       s.ftMade += stat.ftMade; s.ftAtt += stat.ftAtt
-
-      if (!teamsMap.has(stat.teamId)) {
-        teamsMap.set(stat.teamId, { id: stat.teamId, name: stat.team.name, color: stat.team.color, slug: stat.team.slug, logo: (stat.team as any).logo ?? null, seasons: new Set() })
-      }
-      teamsMap.get(stat.teamId)!.seasons.add(stat.game.season)
     }
 
     const seasonStats = [...seasonMap.values()]
@@ -110,6 +115,7 @@ export async function GET(
 
     // Career totals
     const career = playedStats.reduce((acc, stat) => {
+      if (isDnp(stat)) return acc
       acc.gamesPlayed++
       acc.points += stat.points; acc.rebounds += stat.rebounds; acc.assists += stat.assists
       acc.steals += stat.steals; acc.blocks += stat.blocks; acc.turnovers += stat.turnovers

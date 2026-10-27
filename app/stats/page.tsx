@@ -148,7 +148,7 @@ function StatsPageContent() {
     if (view !== 'leaders') return
     setLoading(true)
     const isPct = ['fg', 'threePct', 'ftPct'].includes(leaderCat)
-    const params = new URLSearchParams({ category: leaderCat, limit: '15', minGames: isPct ? '3' : '4' })
+    const params = new URLSearchParams({ category: leaderCat, limit: '15', minGames: '1' })
     if (selectedSeason !== 'all') params.set('season', selectedSeason)
     fetch(`/api/stats?${params}`)
       .then(r => r.json())

@@ -6,8 +6,8 @@ const footerLinks = [
   { href: '/standings', label: 'Standings' },
   { href: '/stats', label: 'Stats Leaders' },
   { href: '/teams', label: 'Teams' },
-  { href: 'https://forms.gle/dhRHPR2GqghCNTKv6', label: 'Captain Sign-Up' },
-  { href: '/register', label: 'Player Registration' },
+  { href: '/team-signup', label: 'Captain Sign-Up' },
+  { href: '/register', label: 'Sign Up' },
   { href: '/admin', label: 'Admin' },
 ]
 

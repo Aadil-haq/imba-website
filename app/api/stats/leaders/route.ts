@@ -6,67 +6,64 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const season = searchParams.get('season')
 
-    let gameIdFilter: { gameId: { in: string[] } } | undefined
+    // Fetch all raw stat rows (avoid groupBy + where on Turso which can fail)
+    const where: Record<string, unknown> = { player: { isSub: false } }
     if (season) {
       const games = await prisma.game.findMany({ where: { season, played: true }, select: { id: true }, take: 5000 })
       const ids = games.map(g => g.id)
       if (ids.length === 0) return NextResponse.json({ scorers: [], rebounders: [], assisters: [], stealers: [] })
-      gameIdFilter = { gameId: { in: ids } }
+      where.gameId = { in: ids }
     }
 
-    const stats = await prisma.playerGameStat.groupBy({
-      by: ['playerId'],
-      where: gameIdFilter,
-      _sum: {
-        points: true,
-        rebounds: true,
-        assists: true,
-        steals: true,
-        blocks: true,
-      },
-      _count: { gameId: true },
-    })
-
-    const playerIds = stats.map((s) => s.playerId)
-    const players = await prisma.player.findMany({
-      where: { id: { in: playerIds } },
+    const rows = await prisma.playerGameStat.findMany({
+      where,
       select: {
-        id: true,
-        name: true,
-        team: { select: { id: true, name: true, slug: true, color: true } },
+        playerId: true,
+        points: true, rebounds: true, assists: true, steals: true, blocks: true,
+        player: { select: { id: true, name: true, isSub: true, team: { select: { name: true, slug: true, color: true } } } },
       },
+      take: 10000,
     })
-    const playerMap = new Map(players.map((p) => [p.id, p]))
 
-    const enriched = stats
-      .map((stat) => {
-        const player = playerMap.get(stat.playerId)
-        if (!player) return null
-        const g = stat._count.gameId
-        return {
-          playerId: stat.playerId,
-          playerName: player.name,
-          teamName: player.team.name,
-          teamSlug: player.team.slug,
-          teamColor: player.team.color,
-          gamesPlayed: g,
-          ppg: g > 0 ? (stat._sum.points ?? 0) / g : 0,
-          rpg: g > 0 ? (stat._sum.rebounds ?? 0) / g : 0,
-          apg: g > 0 ? (stat._sum.assists ?? 0) / g : 0,
-          spg: g > 0 ? (stat._sum.steals ?? 0) / g : 0,
-          bpg: g > 0 ? (stat._sum.blocks ?? 0) / g : 0,
-        }
-      })
-      .filter(Boolean) as any[]
+    // Aggregate manually per player
+    const agg = new Map<string, { name: string; teamName: string; teamSlug: string; teamColor: string; gp: number; pts: number; reb: number; ast: number; stl: number; blk: number }>()
+    for (const r of rows) {
+      if (!r.player || r.player.isSub || !r.player.team) continue
+      const dnp = r.points === 0 && r.rebounds === 0 && r.assists === 0 && r.steals === 0 && r.blocks === 0
+      if (dnp) continue
+      const cur = agg.get(r.playerId) ?? { name: r.player.name, teamName: r.player.team.name, teamSlug: r.player.team.slug, teamColor: r.player.team.color, gp: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0 }
+      cur.gp++
+      cur.pts += r.points
+      cur.reb += r.rebounds
+      cur.ast += r.assists
+      cur.stl += r.steals
+      cur.blk += r.blocks
+      agg.set(r.playerId, cur)
+    }
+
+    const enriched = [...agg.entries()].map(([playerId, s]) => ({
+      playerId,
+      playerName: s.name,
+      teamName: s.teamName,
+      teamSlug: s.teamSlug,
+      teamColor: s.teamColor,
+      gamesPlayed: s.gp,
+      ppg: s.gp > 0 ? s.pts / s.gp : 0,
+      rpg: s.gp > 0 ? s.reb / s.gp : 0,
+      apg: s.gp > 0 ? s.ast / s.gp : 0,
+      spg: s.gp > 0 ? s.stl / s.gp : 0,
+      bpg: s.gp > 0 ? s.blk / s.gp : 0,
+    }))
 
     const top = (key: string) =>
-      [...enriched].filter(p => p.gamesPlayed >= 2).sort((a, b) => b[key] - a[key]).slice(0, 5).map(p => ({ ...p, [key]: p[key].toFixed(1) }))
+      [...enriched].filter(p => p.gamesPlayed >= 3).sort((a, b) => (b as any)[key] - (a as any)[key]).slice(0, 5)
+        .map(p => ({ ...p, [key]: (p as any)[key].toFixed(1) }))
 
     return NextResponse.json({
-      scorers: top('ppg'),
+      scorers:    top('ppg'),
       rebounders: top('rpg'),
-      assisters: top('apg'),
-      stealers: top('spg'),
+      assisters:  top('apg'),
+      stealers:   top('spg'),
     })
   } catch (error) {
     console.error('Stats leaders error:', error)

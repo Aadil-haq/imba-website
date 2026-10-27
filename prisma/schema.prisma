@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 model Team {
@@ -14,6 +14,9 @@ model Team {
   logo        String?
   league      String           @default("Rec League")
   active      Boolean          @default(false)
+  captainName  String?
+  captainEmail String?
+  captainPhone String?
   createdAt   DateTime         @default(now())
   awayGames   Game[]           @relation("AwayTeam")
   homeGames   Game[]           @relation("HomeTeam")
@@ -56,6 +59,7 @@ model Game {
   forfeit     Boolean          @default(false)
   driveUrl    String?
   label       String?
+  court       String?
   createdAt   DateTime         @default(now())
   awayTeam    Team             @relation("AwayTeam", fields: [awayTeamId], references: [id])
   homeTeam    Team             @relation("HomeTeam", fields: [homeTeamId], references: [id])
@@ -136,4 +140,14 @@ model AdminUser {
 model SiteSetting {
   key   String @id
   value String
+}
+
+model CaptainSignup {
+  id          String   @id @default(cuid())
+  captainName String
+  teamName    String
+  division    String
+  phone       String
+  email       String
+  createdAt   DateTime @default(now())
 }

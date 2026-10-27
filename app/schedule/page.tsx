@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-interface Team { id: string; name: string; slug: string; color: string; logo?: string | null }
+interface Team { id: string; name: string; slug: string; color: string; logo?: string | null | undefined }
 interface Game {
   id: string
   homeTeamId: string
@@ -23,6 +23,7 @@ interface Game {
   played: boolean
   forfeit: boolean
   driveUrl: string | null
+  court: string | null
 }
 
 interface PlayerStatRow {
@@ -88,7 +89,7 @@ function StatTable({ stats, teamName, teamColor, teamLogo }: { stats: PlayerStat
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '480px', fontSize: '13px' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #2a2a2a' }}>
-            {['PLAYER', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3P%', 'FT%'].map(h => (
+            {['PLAYER', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FGM', '3PM', 'FTM'].map(h => (
               <th key={h} style={{ padding: '6px 10px', textAlign: h === 'PLAYER' ? 'left' : 'center', color: '#555', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em' }}>{h}</th>
             ))}
           </tr>
@@ -106,9 +107,9 @@ function StatTable({ stats, teamName, teamColor, teamLogo }: { stats: PlayerStat
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#ccc' }}>{s.steals}</td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#ccc' }}>{s.blocks}</td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{s.fouls}</td>
-              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.twoPtMade + s.threeMade, s.twoPtAtt + s.threeAtt)}</td>
-              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.threeMade, s.threeAtt)}</td>
-              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.ftMade, s.ftAtt)}</td>
+              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{s.twoPtMade + s.threeMade}</td>
+              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{s.threeMade}</td>
+              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{s.ftMade}</td>
             </tr>
           ))}
         </tbody>
@@ -232,6 +233,7 @@ function SchedulePageContent() {
   const searchParams = useSearchParams()
 
   const [games, setGames] = useState<Game[]>([])
+  const [teamLogos, setTeamLogos] = useState<Record<string, string | null>>({})
   const [loading, setLoading] = useState(true)
   const [seasonsLoaded, setSeasonsLoaded] = useState(false)
   const [seasonOptions, setSeasonOptions] = useState<SeasonOption[]>([])
@@ -276,6 +278,12 @@ function SchedulePageContent() {
       .then(r => r.json())
       .then(data => { setGames(Array.isArray(data) ? data : []); setLoading(false) })
       .catch(() => { setGames([]); setLoading(false) })
+
+    // Load logos separately — they are large and shouldn't block the schedule from rendering
+    fetch(`/api/teams/logos?season=${encodeURIComponent(selectedSeason)}`)
+      .then(r => r.json())
+      .then(data => setTeamLogos(data))
+      .catch(() => {})
   }, [selectedSeason, selectedLeague, seasonsLoaded])
 
   const closeModal = useCallback(() => setSelectedGameId(null), [])
@@ -445,7 +453,12 @@ function SchedulePageContent() {
                   if (m[3].toUpperCase() === 'AM' && h === 12) h = 0
                   return h * 60 + min
                 }
-                return parseTime(a.time) - parseTime(b.time)
+                const timeDiff = parseTime(a.time) - parseTime(b.time)
+                if (timeDiff !== 0) return timeDiff
+                // Within the same time slot, Court 1 before Court 2
+                const courtA = a.court ?? 'Court 9'
+                const courtB = b.court ?? 'Court 9'
+                return courtA.localeCompare(courtB)
               })
               // For date-grouped: show the date. For week-grouped: show date range from games
               let dateDisplay = ''
@@ -484,123 +497,152 @@ function SchedulePageContent() {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {gamesInGroup.map(game => {
-                    const homeWon = game.played && game.homeScore !== null && game.awayScore !== null && game.homeScore > game.awayScore
-                    const awayWon = game.played && game.homeScore !== null && game.awayScore !== null && game.awayScore > game.homeScore
+                {(() => {
+                  const forfeitGames = gamesInGroup.filter(g => g.forfeit)
+                  const visibleGames = gamesInGroup.filter(g => !g.forfeit)
+                  const forfeitTeamNames = forfeitGames.map(g => {
+                    if (g.homeScore !== null && g.awayScore !== null) {
+                      return g.homeScore < g.awayScore ? g.homeTeam.name : g.awayTeam.name
+                    }
+                    return null
+                  }).filter((n): n is string => n !== null)
 
-                    return (
-                      <div
-                        key={game.id}
-                        onClick={() => game.played ? setSelectedGameId(game.id) : undefined}
-                        style={{
-                          backgroundColor: '#1a1a1a',
-                          border: '1px solid #2a2a2a',
-                          borderRadius: '10px',
-                          padding: '14px 16px',
-                          cursor: game.played ? 'pointer' : 'default',
-                          transition: 'border-color 0.15s, background-color 0.15s',
-                        }}
-                        onMouseEnter={e => { if (game.played) { (e.currentTarget as HTMLElement).style.borderColor = '#3a3a3a'; (e.currentTarget as HTMLElement).style.backgroundColor = '#1e1e1e' } }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLElement).style.backgroundColor = '#1a1a1a' }}
-                      >
-                        {/* Teams + Score row */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          {/* Away Team */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                            <Link
-                              href={`/teams/${game.awayTeam.slug}`}
-                              onClick={e => e.stopPropagation()}
-                              style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, textDecoration: 'none', cursor: 'pointer' }}
-                            >
-                              {game.awayTeam.logo ? (
-                                <img src={game.awayTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
-                              ) : (
-                                <div style={{ width: '8px', height: '8px', backgroundColor: game.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
-                              )}
-                              <span style={{ color: awayWon ? '#ffffff' : '#aaaaaa', fontWeight: awayWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {game.awayTeam.name}
-                              </span>
-                            </Link>
-                          </div>
+                  return (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {visibleGames.map(game => {
+                          const homeWon = game.played && game.homeScore !== null && game.awayScore !== null && game.homeScore > game.awayScore
+                          const awayWon = game.played && game.homeScore !== null && game.awayScore !== null && game.awayScore > game.homeScore
+                          const homeLogo = teamLogos[game.homeTeamId]
+                          const awayLogo = teamLogos[game.awayTeamId]
 
-                          {/* Score / VS */}
-                          <div style={{ textAlign: 'center', flexShrink: 0, padding: '0 8px' }}>
-                            {game.played ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <span style={{ color: awayWon ? '#4A9FE3' : '#cccccc', fontWeight: 900, fontSize: '18px' }}>{game.awayScore}</span>
-                                <span style={{ color: '#444', fontSize: '13px' }}>—</span>
-                                <span style={{ color: homeWon ? '#4A9FE3' : '#cccccc', fontWeight: 900, fontSize: '18px' }}>{game.homeScore}</span>
-                              </div>
-                            ) : (
-                              <span style={{ color: '#4A9FE3', fontWeight: 700, fontSize: '14px' }}>{game.time}</span>
-                            )}
-                          </div>
-
-                          {/* Home Team */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
-                            <Link
-                              href={`/teams/${game.homeTeam.slug}`}
-                              onClick={e => e.stopPropagation()}
-                              style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, textDecoration: 'none', cursor: 'pointer', justifyContent: 'flex-end' }}
-                            >
-                              <span style={{ color: homeWon ? '#ffffff' : '#aaaaaa', fontWeight: homeWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {game.homeTeam.name}
-                              </span>
-                              {game.homeTeam.logo ? (
-                                <img src={game.homeTeam.logo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
-                              ) : (
-                                <div style={{ width: '8px', height: '8px', backgroundColor: game.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
-                              )}
-                            </Link>
-                          </div>
-                        </div>
-
-                        {/* Meta row */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          {useWeekGrouping && (
-                            <span style={{ color: '#555', fontSize: '11px' }}>
-                              {new Date(game.date.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} ·
-                            </span>
-                          )}
-                          <span style={{ color: '#555', fontSize: '11px' }}>{game.location}</span>
-                          <span style={{
-                            padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
-                            backgroundColor: game.played ? '#1a4731' : '#2a2a2a',
-                            color: game.played ? '#27AE60' : '#888',
-                          }}>
-                            {game.played ? 'FINAL' : 'UPCOMING'}
-                          </span>
-                          {game.forfeit && (
-                            <span style={{
-                              padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
-                              backgroundColor: '#2a1a1a', color: '#e74c3c',
-                            }}>FORFEIT</span>
-                          )}
-                          {game.played && (
-                            <span style={{ color: '#444', fontSize: '11px' }}>· tap for box score</span>
-                          )}
-                          {game.driveUrl && (
-                            <a
-                              href={game.driveUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={e => e.stopPropagation()}
+                          return (
+                            <div
+                              key={game.id}
+                              onClick={() => game.played ? setSelectedGameId(game.id) : undefined}
                               style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                backgroundColor: '#0f2a1a', color: '#27AE60',
-                                border: '1px solid #27AE60', borderRadius: '4px',
-                                padding: '2px 8px', fontSize: '11px', fontWeight: 700, textDecoration: 'none',
+                                backgroundColor: '#1a1a1a',
+                                border: '1px solid #2a2a2a',
+                                borderRadius: '10px',
+                                padding: '14px 16px',
+                                cursor: game.played ? 'pointer' : 'default',
+                                transition: 'border-color 0.15s, background-color 0.15s',
                               }}
+                              onMouseEnter={e => { if (game.played) { (e.currentTarget as HTMLElement).style.borderColor = '#3a3a3a'; (e.currentTarget as HTMLElement).style.backgroundColor = '#1e1e1e' } }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLElement).style.backgroundColor = '#1a1a1a' }}
                             >
-                              📁 Drive
-                            </a>
-                          )}
-                        </div>
+                              {/* Teams + Score row */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                {/* Away Team */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                  {game.label?.startsWith('tbd:') ? (
+                                    <span style={{ color: '#666666', fontWeight: 600, fontSize: '14px', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {game.label.slice(4)}
+                                    </span>
+                                  ) : (
+                                  <Link
+                                    href={`/teams/${game.awayTeam.slug}`}
+                                    onClick={e => e.stopPropagation()}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, textDecoration: 'none', cursor: 'pointer' }}
+                                  >
+                                    {awayLogo ? (
+                                      <img src={awayLogo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
+                                    ) : (
+                                      <div style={{ width: '8px', height: '8px', backgroundColor: game.awayTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                                    )}
+                                    <span style={{ color: awayWon ? '#ffffff' : '#aaaaaa', fontWeight: awayWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {game.awayTeam.name}
+                                    </span>
+                                  </Link>
+                                  )}
+                                </div>
+
+                                {/* Score / VS */}
+                                <div style={{ textAlign: 'center', flexShrink: 0, padding: '0 8px' }}>
+                                  {game.played ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <span style={{ color: awayWon ? '#4A9FE3' : '#cccccc', fontWeight: 900, fontSize: '18px' }}>{game.awayScore}</span>
+                                      <span style={{ color: '#444', fontSize: '13px' }}>—</span>
+                                      <span style={{ color: homeWon ? '#4A9FE3' : '#cccccc', fontWeight: 900, fontSize: '18px' }}>{game.homeScore}</span>
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: '#4A9FE3', fontWeight: 700, fontSize: '14px' }}>{game.time}</span>
+                                  )}
+                                </div>
+
+                                {/* Home Team */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
+                                  <Link
+                                    href={`/teams/${game.homeTeam.slug}`}
+                                    onClick={e => e.stopPropagation()}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, textDecoration: 'none', cursor: 'pointer', justifyContent: 'flex-end' }}
+                                  >
+                                    <span style={{ color: homeWon ? '#ffffff' : '#aaaaaa', fontWeight: homeWon ? 800 : 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {game.homeTeam.name}
+                                    </span>
+                                    {homeLogo ? (
+                                      <img src={homeLogo} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff', flexShrink: 0 }} />
+                                    ) : (
+                                      <div style={{ width: '8px', height: '8px', backgroundColor: game.homeTeam.color, borderRadius: '50%', flexShrink: 0 }} />
+                                    )}
+                                  </Link>
+                                </div>
+                              </div>
+
+                              {/* Meta row */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                {useWeekGrouping && (
+                                  <span style={{ color: '#555', fontSize: '11px' }}>
+                                    {new Date(game.date.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} ·
+                                  </span>
+                                )}
+                                <span style={{ color: '#555', fontSize: '11px' }}>{game.location}</span>
+                                {game.court && (
+                                  <span style={{
+                                    padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
+                                    backgroundColor: '#1a2a3a', color: '#4A9FE3',
+                                  }}>{game.court}</span>
+                                )}
+                                <span style={{
+                                  padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
+                                  backgroundColor: game.played ? '#1a4731' : '#2a2a2a',
+                                  color: game.played ? '#27AE60' : '#888',
+                                }}>
+                                  {game.played ? 'FINAL' : 'UPCOMING'}
+                                </span>
+                                {game.played && (
+                                  <span style={{ color: '#444', fontSize: '11px' }}>· tap for box score</span>
+                                )}
+                                {game.driveUrl && (
+                                  <a
+                                    href={game.driveUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                      backgroundColor: '#0f2a1a', color: '#27AE60',
+                                      border: '1px solid #27AE60', borderRadius: '4px',
+                                      padding: '2px 8px', fontSize: '11px', fontWeight: 700, textDecoration: 'none',
+                                    }}
+                                  >
+                                    📁 Drive
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                    )
-                  })}
-                </div>
+                      {forfeitTeamNames.length > 0 && (
+                        <div style={{ marginTop: '10px', padding: '10px 14px', backgroundColor: '#1e1010', border: '1px solid #3a1a1a', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ color: '#e74c3c', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Forfeit —</span>
+                          <span style={{ color: '#888', fontSize: '12px' }}>{forfeitTeamNames.join(' and ')} forfeited their scheduled matchup{forfeitTeamNames.length > 1 ? 's' : ''} this week.</span>
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
               )
             })}

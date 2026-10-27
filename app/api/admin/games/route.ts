@@ -37,6 +37,19 @@ export async function DELETE(request: Request) {
   }
 }
 
+export async function POST(request: Request) {
+  if (!checkAdminAuth(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  try {
+    const body = await request.json()
+    const game = await prisma.game.create({ data: body })
+    return NextResponse.json(game)
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to create game' }, { status: 500 })
+  }
+}
+
 export async function PATCH(request: Request) {
   if (!checkAdminAuth(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import AdminLayout from '@/components/admin/AdminLayout'
 
-interface Team { id: string; name: string; slug: string; color: string; logo?: string | null; active: boolean; league: string }
-interface Player { id: string; name: string; number: number; position: string; teamId: string; isSub: boolean }
+interface Team { id: string; name: string; slug: string; color: string; logo?: string | null; active: boolean; league: string; captainName?: string | null; captainEmail?: string | null; captainPhone?: string | null }
+interface Player { id: string; name: string; number: number; position: string; teamId: string; isSub: boolean; season?: string | null }
 interface DbPlayer { id: string; name: string; number: number; position: string; teamId: string }
 interface SeasonRow { season: string; league: string; active: boolean }
 interface EditingPlayer { id: string; name: string; number: string; position: string; teamId: string }
@@ -49,7 +49,7 @@ export default function AdminTeamsPage() {
 
   // Create team modal
   const [showCreateTeam, setShowCreateTeam] = useState(false)
-  const [newTeam, setNewTeam] = useState({ name: '', league: 'Comp', color: '#4A9FE3' })
+  const [newTeam, setNewTeam] = useState({ name: '', league: '35+ Comp', color: '#4A9FE3' })
   const [creatingTeam, setCreatingTeam] = useState(false)
 
   // Edit team modal
@@ -76,7 +76,7 @@ export default function AdminTeamsPage() {
       const created = await res.json()
       setAllTeams(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
       setShowCreateTeam(false)
-      setNewTeam({ name: '', league: 'Comp', color: '#4A9FE3' })
+      setNewTeam({ name: '', league: '35+ Comp', color: '#4A9FE3' })
       showMsg(`✓ Team "${created.name}" created! You can now add it to a season via Active Teams.`)
     } else {
       const err = await res.json().catch(() => ({}))
@@ -329,7 +329,7 @@ export default function AdminTeamsPage() {
                         onChange={e => setNewTeam(t => ({ ...t, league: e.target.value }))}
                         style={{ ...inputS, cursor: 'pointer' }}
                       >
-                        {['Comp', 'Rec', '35+', 'Rec League', 'U17'].map(l => <option key={l} value={l}>{l}</option>)}
+                        {['35+ Comp', '35+ Draft', 'Comp', 'Rec', 'U17'].map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                     </div>
                     <div>
@@ -473,7 +473,7 @@ export default function AdminTeamsPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
             {teamsInSeason.map(team => {
-              const teamPlayers = players.filter(p => p.teamId === team.id && !p.isSub)
+              const teamPlayers = players.filter(p => p.teamId === team.id && !p.isSub && p.season === selectedSeason)
               const isAddingHere = addingPlayerToTeam === team.id
 
               return (
@@ -525,8 +525,8 @@ export default function AdminTeamsPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <h3 style={{ color: '#fff', fontWeight: 800, fontSize: '15px', margin: 0 }}>{team.name}</h3>
                         <span style={{
-                          backgroundColor: team.league === 'Comp' ? '#1a2a4a' : '#1a3a1a',
-                          color: team.league === 'Comp' ? '#4A9FE3' : '#27AE60',
+                          backgroundColor: team.league?.includes('Comp') ? '#1a2a4a' : '#1a3a1a',
+                          color: team.league?.includes('Comp') ? '#4A9FE3' : '#27AE60',
                           fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px',
                         }}>{team.league}</span>
                         {team.active && (
@@ -543,6 +543,11 @@ export default function AdminTeamsPage() {
                           : <span>{teamPlayers.length} player{teamPlayers.length !== 1 ? 's' : ''} · {team.logo ? 'Click logo to replace' : 'Click + or drag to add logo'}</span>
                         }
                       </div>
+                      {(team.captainName || team.captainEmail || team.captainPhone) && (
+                        <div style={{ color: '#555', fontSize: '11px', marginTop: '3px' }}>
+                          Captain: {[team.captainName, team.captainPhone, team.captainEmail].filter(Boolean).join(' · ')}
+                        </div>
+                      )}
                     </div>
                   </div>
 

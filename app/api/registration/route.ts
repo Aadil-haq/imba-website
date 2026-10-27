@@ -50,7 +50,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const season = await getActiveSeasonForLeague(body.league || 'Rec')
+    const league = body.league || '35+ Draft'
+    const season = (league === 'D1 Comp Division' || league === 'D2 Division')
+      ? 'Winter 2026'
+      : await getActiveSeasonForLeague(league)
 
     const registration = await prisma.registration.create({
       data: {
@@ -60,13 +63,13 @@ export async function POST(request: Request) {
         phone: body.phone,
         age: parseInt(body.age),
         position: body.position,
-        league: body.league || 'Rec League',
+        league,
         teamPref: body.teamPref || null,
         jerseyNumber: body.jerseyNumber || null,
         jerseySize: body.jerseySize || null,
         paymentMethod: 'stripe',
         paymentStatus: 'pending',
-        amount: 8000,
+        amount: body.amount ?? 8000,
         season,
       },
     })

@@ -29,6 +29,9 @@ export async function GET(
 
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
+    const isDnp = (s: { points: number; rebounds: number; assists: number; steals: number; blocks: number; twoPtMade: number; threeMade: number; ftMade: number }) =>
+      s.points === 0 && s.rebounds === 0 && s.assists === 0 && s.steals === 0 && s.blocks === 0 && s.twoPtMade === 0 && s.threeMade === 0 && s.ftMade === 0
+
     // Per-season records
     const seasonMap: Record<string, { season: string; league: string; wins: number; losses: number; pf: number; pa: number }> = {}
     const key = (g: { season: string; league: string }) => `${g.season}__${g.league}`
@@ -55,8 +58,14 @@ export async function GET(
       }
     })
 
+    // Also include seasons from scheduled (unplayed) games so new seasons
+    // appear in the selector even before any results exist
+    ;[...team.homeGames, ...team.awayGames].forEach(g => {
+      const k = key(g)
+      if (!seasonMap[k]) seasonMap[k] = { season: g.season, league: g.league, wins: 0, losses: 0, pf: 0, pa: 0 }
+    })
+
     const seasonRecords = Object.values(seasonMap)
-      .filter(s => s.wins + s.losses > 0)
       .sort((a, b) => b.season.localeCompare(a.season))
 
     const wins = seasonRecords.reduce((s, r) => s + r.wins, 0)
@@ -70,24 +79,9 @@ export async function GET(
     let playersWithStats
 
     if (season) {
-      // All player IDs who have stats for this team in this season
-      const statRows = await prisma.playerGameStat.findMany({
-        where: { teamId: team.id, game: { season } },
-        select: { playerId: true },
-        distinct: ['playerId'],
-      })
-      const statPlayerIds = new Set(statRows.map(r => r.playerId))
-
-      // Also include players currently tagged with this season who haven't played yet
-      const seasonTaggedIds = team.players
-        .filter(p => p.season === season && !statPlayerIds.has(p.id))
-        .map(p => p.id)
-
-      const allPlayerIds = [...statPlayerIds, ...seasonTaggedIds]
-
-      // Fetch full player records regardless of current teamId
+      // Only players currently rostered for this season on this team
       const players = await prisma.player.findMany({
-        where: { id: { in: allPlayerIds } },
+        where: { teamId: team.id, season, isSub: false },
         include: {
           gameStat: {
             where: { teamId: team.id, game: { season } },
@@ -98,7 +92,7 @@ export async function GET(
 
       playersWithStats = players.map(player => {
         const stats = player.gameStat
-        const games = stats.length
+        const games = stats.filter(s => !isDnp(s)).length
         const totals = stats.reduce(
           (acc, stat) => ({
             points: acc.points + stat.points,
@@ -152,7 +146,7 @@ export async function GET(
 
       playersWithStats = players.map(player => {
         const stats = player.gameStat
-        const games = stats.length
+        const games = stats.filter(s => !isDnp(s)).length
         const totals = stats.reduce(
           (acc, stat) => ({
             points: acc.points + stat.points,

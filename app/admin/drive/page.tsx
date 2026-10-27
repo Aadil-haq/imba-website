@@ -16,6 +16,8 @@ interface Game {
 }
 
 const SEASONS = [
+  'D2 Rec 2026 Summer',
+  'D2 Comp 2026 Summer',
   'D1 2025-26 Winter',
   'D2 2025-26 Winter',
   'D4 2025-26 Winter',

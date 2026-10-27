@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const stripe = new Stripe(stripeKey)
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-    const league = body.league || 'Rec League'
+    const league = body.league || '35+ Draft'
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'], // Apple Pay & Google Pay are included automatically in Stripe Checkout
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
               name: `IMBA ${league} Registration`,
               description: `${body.firstName} ${body.lastName} · ${body.position}`,
             },
-            unit_amount: 8000, // $80.00
+            unit_amount: 11500, // $115.00
           },
           quantity: 1,
         },

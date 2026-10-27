@@ -175,7 +175,7 @@ function StandingsPageContent() {
                       borderLeft: `3px solid ${madePlayoffs ? team.teamColor : '#2a2a2a'}`,
                       opacity: madePlayoffs ? 1 : 0.5,
                     }}>
-                      <td style={{ padding: '14px 16px', fontWeight: 800, fontSize: '15px', color: i < 2 ? '#4A9FE3' : '#888' }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 800, fontSize: '15px', color: '#888' }}>
                         #{i + 1}
                       </td>
                       <td style={{ padding: '14px 16px' }}>
@@ -185,11 +185,6 @@ function StandingsPageContent() {
                             : <div style={{ width: '12px', height: '12px', backgroundColor: team.teamColor, borderRadius: '50%', flexShrink: 0 }} />
                           }
                           <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>{team.teamName}</span>
-                          {madePlayoffs && (
-                            <span style={{ backgroundColor: '#1a3a5c', color: '#4A9FE3', fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', marginLeft: '4px' }}>
-                              PLAYOFF
-                            </span>
-                          )}
                         </Link>
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'center', color: '#ccc', fontSize: '14px' }}>{team.gamesPlayed}</td>

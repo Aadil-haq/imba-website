@@ -26,6 +26,8 @@ const LEAGUE_COLORS: Record<string, string> = {
   Comp: '#4A9FE3',
   Rec: '#27AE60',
   '35+': '#F5A623',
+  '35+ Comp': '#4A9FE3',
+  '35+ Draft': '#8B5CF6',
   'Rec League': '#27AE60',
   U17: '#f97316',
   Unknown: '#888',

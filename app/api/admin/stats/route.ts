@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     playerId: string; gameId: string; teamId: string
     points: number; rebounds: number; assists: number; steals: number; blocks: number; turnovers: number
     twoPtMade: number; twoPtAtt: number; threeMade: number; threeAtt: number; ftMade: number; ftAtt: number
+    fouls: number
   }[]
 
   const results = await Promise.all(
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
           threeAtt: s.threeAtt ?? 0,
           ftMade: s.ftMade ?? 0,
           ftAtt: s.ftAtt ?? 0,
+          fouls: s.fouls ?? 0,
         },
         create: {
           playerId: s.playerId,
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
           threeAtt: s.threeAtt ?? 0,
           ftMade: s.ftMade ?? 0,
           ftAtt: s.ftAtt ?? 0,
+          fouls: s.fouls ?? 0,
         },
       })
     )

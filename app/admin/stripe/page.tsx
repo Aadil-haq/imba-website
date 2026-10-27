@@ -122,7 +122,7 @@ STRIPE_PUBLISHABLE_KEY=pk_live_your_real_key_here`)}
             <p style={{ color: '#888', fontSize: '14px', marginBottom: '12px' }}>
               Currently set to <strong style={{ color: '#fff' }}>$80.00</strong> per player. To change the amount, edit <code style={{ color: '#4A9FE3', backgroundColor: '#111', padding: '2px 6px', borderRadius: '3px', fontSize: '12px' }}>.env</code>:
             </p>
-            {code('REGISTRATION_FEE=8000   # in cents — 8000 = $80.00')}
+            {code('REGISTRATION_FEE=11500   # in cents — 11500 = $115.00')}
             <p style={{ color: '#555', fontSize: '13px', marginTop: '12px' }}>Also update the display text on the registration page and in the checkout session in <code style={{ color: '#4A9FE3', backgroundColor: '#111', padding: '2px 6px', borderRadius: '3px', fontSize: '12px' }}>/app/api/stripe/checkout/route.ts</code>.</p>
           </div>
         ))}

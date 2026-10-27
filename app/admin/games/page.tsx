@@ -8,7 +8,7 @@ interface Team { id: string; name: string; color: string; league: string }
 interface Game {
   id: string; homeTeam: Team; awayTeam: Team; homeTeamId: string; awayTeamId: string
   homeScore: number | null; awayScore: number | null
-  date: string; time: string; location: string; week: number; played: boolean; season: string; league: string
+  date: string; time: string; location: string; week: number; played: boolean; season: string; league: string; court: string | null
 }
 interface SeasonRow { season: string; league: string; active: boolean }
 
@@ -35,7 +35,7 @@ export default function AdminGamesPage() {
   const [selectedSeason, setSelectedSeason] = useState<string>('')
   const [newGame, setNewGame] = useState({
     homeTeamId: '', awayTeamId: '', date: '', time: '7:00 PM',
-    location: 'Irving Masjid Gym', week: '1', season: '', league: 'Comp',
+    location: 'Irving Masjid Gym', week: '1', season: '', league: 'Comp', court: 'Court 1',
   })
   const [score, setScore] = useState({ homeScore: '', awayScore: '' })
   const [saving, setSaving] = useState(false)
@@ -158,6 +158,7 @@ export default function AdminGamesPage() {
         time: editGame.time,
         location: editGame.location,
         week: editGame.week,
+        court: editGame.court,
       }),
     })
     setSaving(false)
@@ -327,6 +328,15 @@ export default function AdminGamesPage() {
                   <label style={labelS}>Location</label>
                   <input value={newGame.location} onChange={e => setNewGame(prev => ({ ...prev, location: e.target.value }))} style={inputS} />
                 </div>
+
+                {/* Court */}
+                <div>
+                  <label style={labelS}>Court</label>
+                  <select value={newGame.court} onChange={e => setNewGame(prev => ({ ...prev, court: e.target.value }))} style={selectS}>
+                    <option value="Court 1">Court 1</option>
+                    <option value="Court 2">Court 2</option>
+                  </select>
+                </div>
               </div>
 
               {newGame.homeTeamId && newGame.awayTeamId && newGame.homeTeamId === newGame.awayTeamId && (
@@ -427,6 +437,14 @@ export default function AdminGamesPage() {
                     <label style={labelS}>Location</label>
                     <input value={editGame.location} onChange={e => setEditGame(g => g ? { ...g, location: e.target.value } : null)} style={inputS} />
                   </div>
+                  <div>
+                    <label style={labelS}>Court</label>
+                    <select value={editGame.court ?? ''} onChange={e => setEditGame(g => g ? { ...g, court: e.target.value || null } : null)} style={selectS}>
+                      <option value="">None</option>
+                      <option value="Court 1">Court 1</option>
+                      <option value="Court 2">Court 2</option>
+                    </select>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                   <button type="button" onClick={() => setEditGame(null)} style={{ backgroundColor: '#2a2a2a', color: '#888', border: 'none', borderRadius: '6px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
@@ -457,7 +475,7 @@ export default function AdminGamesPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '640px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#0d0d0d', borderBottom: '2px solid #4A9FE3' }}>
-                  {['Wk', 'Home', 'Score', 'Away', 'Date', 'Time', 'Status', ''].map(h => (
+                  {['Wk', 'Home', 'Score', 'Away', 'Date', 'Time', 'Court', 'Status', ''].map(h => (
                     <th key={h} style={{ padding: '12px 14px', textAlign: 'left', color: '#4A9FE3', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{h}</th>
                   ))}
                 </tr>
@@ -489,6 +507,11 @@ export default function AdminGamesPage() {
                       {new Date(g.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </td>
                     <td style={{ padding: '12px 14px', color: '#555', fontSize: '12px', whiteSpace: 'nowrap' }}>{g.time}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      {g.court && (
+                        <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, backgroundColor: '#1a2a3a', color: '#4A9FE3' }}>{g.court}</span>
+                      )}
+                    </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', backgroundColor: g.played ? '#1a4731' : '#1a2a2a', color: g.played ? '#27AE60' : '#4A9FE3' }}>
                         {g.played ? 'FINAL' : 'UPCOMING'}

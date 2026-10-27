@@ -106,7 +106,7 @@ export async function PATCH(request: Request) {
   }
   try {
     const body = await request.json()
-    const { id, name, number, position, teamId, season } = body
+    const { id, name, number, position, teamId, season, isSub } = body
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     const player = await prisma.player.update({
       where: { id },
@@ -116,6 +116,7 @@ export async function PATCH(request: Request) {
         ...(position !== undefined && { position }),
         ...(teamId !== undefined && { teamId }),
         ...('season' in body && { season: season ?? null }),
+        ...(isSub !== undefined && { isSub }),
       },
       include: { team: true },
     })

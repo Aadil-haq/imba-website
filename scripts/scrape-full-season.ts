@@ -11,8 +11,20 @@ const LEAGUE_ID = '65672'
 
 // Season name -> mystatsonline season ID
 const SEASONS: { name: string; league: string; msoSeasonId: string }[] = [
-  { name: 'D1 2025-26 Winter', league: 'Comp', msoSeasonId: '107277' },
-  { name: 'D2 2025-26 Winter', league: 'Rec',  msoSeasonId: '107276' },
+  { name: 'D1 2025-26 Winter',   league: 'Comp', msoSeasonId: '107277' },
+  { name: 'D2 2025-26 Winter',   league: 'Rec',  msoSeasonId: '107276' },
+  { name: 'D4 2025-26 Winter',   league: 'Rec',  msoSeasonId: '106802' },
+  { name: 'D3 2025 Fall',        league: 'Rec',  msoSeasonId: '106576' },
+  { name: 'D2 2025 Summer',      league: 'Rec',  msoSeasonId: '105128' },
+  { name: '2025 Summer Tourn',   league: 'Comp', msoSeasonId: '104510' },
+  { name: 'D4 2024 Winter',      league: 'Rec',  msoSeasonId: '101186' },
+  { name: 'D3 2024 Winter',      league: 'Rec',  msoSeasonId: '101185' },
+  { name: 'D2 2024 Winter',      league: 'Rec',  msoSeasonId: '101021' },
+  { name: 'D1 2024 Winter',      league: 'Comp', msoSeasonId: '101020' },
+  { name: '2024 Summer League',  league: 'Comp', msoSeasonId: '98800'  },
+  { name: '2023-24 Winter',      league: 'Comp', msoSeasonId: '94645'  },
+  { name: '2023 Summer',         league: 'Comp', msoSeasonId: '90255'  },
+  { name: 'Fall 2022',           league: 'Comp', msoSeasonId: '87272'  },
 ]
 
 function fetchUrl(url: string, postData?: string, extraHeaders?: Record<string, string>): Promise<string> {
@@ -77,68 +89,8 @@ function extractGameIds(html: string): string[] {
 
 /** Fetch schedule page for a given MSO season ID */
 async function fetchScheduleHtml(msoSeasonId: string): Promise<string> {
-  const scheduleUrl = `https://www.mystatsonline.com/basket/visitor/league/schedule_scores/schedule_scores_basket.aspx?IDLeague=${LEAGUE_ID}`
-
-  // First GET to grab VIEWSTATE
-  const firstHtml = await fetchUrl(scheduleUrl)
-  const vsMatch = firstHtml.match(/id="__VIEWSTATE"\s+value="([^"]*)"/)
-  const vsGenMatch = firstHtml.match(/id="__VIEWSTATEGENERATOR"\s+value="([^"]*)"/)
-  const evValMatch = firstHtml.match(/id="__EVENTVALIDATION"\s+value="([^"]*)"/)
-
-  if (!vsMatch) throw new Error('Could not find __VIEWSTATE on schedule page')
-
-  const vs = vsMatch[1]
-  const vsGen = vsGenMatch ? vsGenMatch[1] : ''
-  const evVal = evValMatch ? evValMatch[1] : ''
-
-  // Find the dropdown name
-  const ddMatch = firstHtml.match(/name="(ctl\d+\$ContentPlaceHolder\d+\$[^"]*ddl[^"]*)"[^>]*>/i)
-    || firstHtml.match(/name="([^"]*ddl[Ss]eason[^"]*)"[^>]*>/i)
-    || firstHtml.match(/name="([^"]*DDLseason[^"]*)"[^>]*>/i)
-
-  let ddName = ''
-  if (ddMatch) {
-    ddName = ddMatch[1]
-  } else {
-    // Try to find any select with season-like options
-    const selectMatch = firstHtml.match(/<select[^>]+name="([^"]+)"[^>]*>[\s\S]*?<\/select>/gi)
-    if (selectMatch) {
-      for (const sel of selectMatch) {
-        if (sel.includes(msoSeasonId)) {
-          const nm = sel.match(/name="([^"]+)"/)
-          if (nm) { ddName = nm[1]; break }
-        }
-      }
-    }
-  }
-
-  if (!ddName) {
-    // Just look for any select that has our season option value
-    const selRe = /<select[^>]+name="([^"]+)"[^>]*>([\s\S]*?)<\/select>/gi
-    let sm
-    while ((sm = selRe.exec(firstHtml)) !== null) {
-      if (sm[2].includes(msoSeasonId)) { ddName = sm[1]; break }
-    }
-  }
-
-  if (!ddName) throw new Error('Could not find season dropdown name')
-  console.log(`  Dropdown: ${ddName}`)
-
-  // Find any event target for the dropdown
-  const etMatch = firstHtml.match(/__doPostBack\('([^']*ddl[^']*)'/)
-  const eventTarget = etMatch ? etMatch[1] : ddName.replace(/\$/g, '$')
-
-  const body = new URLSearchParams({
-    '__VIEWSTATE': vs,
-    '__VIEWSTATEGENERATOR': vsGen,
-    '__EVENTVALIDATION': evVal,
-    '__EVENTTARGET': eventTarget,
-    '__EVENTARGUMENT': '',
-    [ddName]: msoSeasonId,
-  })
-
-  const html = await fetchUrl(scheduleUrl, body.toString())
-  return html
+  const url = `https://www.mystatsonline.com/basket/visitor/league/schedule_scores/schedule.aspx?IDLeague=${LEAGUE_ID}&IDSeason=${msoSeasonId}`
+  return fetchUrl(url)
 }
 
 function parseBoxScore(html: string): {
@@ -244,6 +196,20 @@ async function upsertStats(gameDbId: string, awayTeamId: string, homeTeamId: str
   return count
 }
 
+// Map of season -> sorted unique dates -> week number
+const seasonWeekMap = new Map<string, Map<string, number>>()
+
+function getWeekNumber(season: string, date: Date): number {
+  const key = season
+  if (!seasonWeekMap.has(key)) seasonWeekMap.set(key, new Map())
+  const dateMap = seasonWeekMap.get(key)!
+  const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+  if (!dateMap.has(dayKey)) {
+    dateMap.set(dayKey, dateMap.size + 1)
+  }
+  return dateMap.get(dayKey)!
+}
+
 async function importGame(gameId: string, season: string, league: string): Promise<void> {
   const html = await fetchUrl(`https://www.mystatsonline.com/basket/visitor/league/schedule_scores/game_score_basket.aspx?IDLeague=${LEAGUE_ID}&IDGame=${gameId}`)
   const box = parseBoxScore(html)
@@ -259,14 +225,16 @@ async function importGame(gameId: string, season: string, league: string): Promi
     return
   }
 
+  const week = getWeekNumber(season, box.date)
+
   const game = await prisma.game.create({
     data: {
       date: box.date, location: 'Irving Masjid', season, league, played: true,
-      homeTeamId, awayTeamId, homeScore: box.homeScore, awayScore: box.awayScore, week: 99,
+      homeTeamId, awayTeamId, homeScore: box.homeScore, awayScore: box.awayScore, week,
     }
   })
   const count = await upsertStats(game.id, awayTeamId, homeTeamId, box)
-  console.log(`  ✅ ADDED ${gameId}: ${box.awayTeam} ${box.awayScore} @ ${box.homeTeam} ${box.homeScore} (${box.date.toDateString()}) — ${count} stats`)
+  console.log(`  ✅ ADDED ${gameId}: ${box.awayTeam} ${box.awayScore} @ ${box.homeTeam} ${box.homeScore} (${box.date.toDateString()}) wk${week} — ${count} stats`)
 }
 
 async function main() {

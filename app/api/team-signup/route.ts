@@ -5,7 +5,10 @@ function slugify(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
-// Called by Google Apps Script when a captain submits the form
+const LEAGUE = '35+ Comp'
+const SEASON = '35+ 2026 Summer'
+
+// Captain sign-up for the 35+ Comp League (bring-your-own-team)
 export async function POST(request: Request) {
   // Verify secret
   const auth = request.headers.get('authorization') || ''
@@ -16,22 +19,22 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { division, captainName, teamName, phone, season: bodySeason } = body
+    const { captainName, teamName, phone, email, season: bodySeason } = body
 
-    if (!teamName || !captainName) {
-      return NextResponse.json({ error: 'teamName and captainName are required' }, { status: 400 })
+    if (!teamName || !captainName || !phone || !email) {
+      return NextResponse.json({ error: 'teamName, captainName, phone, and email are required' }, { status: 400 })
     }
 
-    // Map Google Form division label → DB league value
-    const league = division?.toLowerCase().includes('comp') ? 'Comp' : 'Rec'
-    const season = bodySeason || 'D2 2026 Summer'
-
+    const season = bodySeason || SEASON
     const normalizedName = teamName.trim()
 
-    // If team already exists, activate it and return
-    const duplicate = await prisma.team.findFirst({ where: { name: normalizedName, league } })
+    // If team already exists, activate it and refresh captain contact info
+    const duplicate = await prisma.team.findFirst({ where: { name: normalizedName, league: LEAGUE } })
     if (duplicate) {
-      await prisma.team.update({ where: { id: duplicate.id }, data: { active: true } })
+      await prisma.team.update({
+        where: { id: duplicate.id },
+        data: { active: true, captainName: captainName.trim(), captainEmail: email.trim(), captainPhone: phone.trim() },
+      })
       console.log(`Team signup: "${normalizedName}" already exists — activated`)
       return NextResponse.json({ success: true, skipped: true, teamId: duplicate.id })
     }
@@ -46,9 +49,12 @@ export async function POST(request: Request) {
       data: {
         name: normalizedName,
         slug,
-        league,
+        league: LEAGUE,
         color: '#4A9FE3',
         active: true,
+        captainName: captainName.trim(),
+        captainEmail: email.trim(),
+        captainPhone: phone.trim(),
       },
     })
 
@@ -60,12 +66,13 @@ export async function POST(request: Request) {
         position: 'G',
         isSub: false,
         teamId: team.id,
+        season,
       },
     })
 
-    console.log(`Team signup: "${team.name}" (${league}) — captain: ${captainName} — phone: ${phone}`)
+    console.log(`Team signup: "${team.name}" (${LEAGUE}) — captain: ${captainName} — phone: ${phone} — email: ${email}`)
 
-    return NextResponse.json({ success: true, teamId: team.id, teamName: team.name, league })
+    return NextResponse.json({ success: true, teamId: team.id, teamName: team.name, league: LEAGUE })
   } catch (error) {
     console.error('Team signup error:', error)
     return NextResponse.json({ error: 'Failed to create team' }, { status: 500 })

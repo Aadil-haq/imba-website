@@ -61,7 +61,7 @@ async function getDivisionStandings(activeSeasons: string[]): Promise<DivisionSt
 async function getHomeData() {
   const [recentGames, upcomingGames, announcements, seasonRows] = await Promise.all([
     prisma.game.findMany({
-      where: { played: true },
+      where: { played: true, forfeit: false },
       include: { homeTeam: true, awayTeam: true },
       orderBy: { date: 'desc' },
       take: 8,

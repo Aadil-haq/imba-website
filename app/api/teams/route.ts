@@ -148,6 +148,7 @@ export async function PATCH(request: Request) {
     if (body.active !== undefined) data.active = body.active
     if (body.league !== undefined) data.league = body.league
     if (body.name !== undefined) data.name = body.name
+    if (body.slug !== undefined) data.slug = body.slug
     if (body.color !== undefined) data.color = body.color
     if (body.logo !== undefined) data.logo = body.logo
     const team = await prisma.team.update({

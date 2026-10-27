@@ -39,6 +39,7 @@ interface Game {
   week: number
   isHome: boolean
   season: string
+  court: string | null
 }
 
 interface SeasonRecord {
@@ -65,7 +66,7 @@ interface TeamDetail {
   games: Game[]
 }
 
-type Tab = 'stats' | 'schedule'
+type Tab = 'stats' | 'schedule' | 'roster'
 
 export default function TeamPage() {
   const params = useParams()
@@ -211,6 +212,7 @@ export default function TeamPage() {
           {/* Tabs */}
           <div style={{ display: 'flex', gap: '0', marginTop: '24px', borderBottom: '1px solid #2a2a2a' }}>
             <button style={tabStyle('stats')} onClick={() => setActiveTab('stats')}>Stats</button>
+            <button style={tabStyle('roster')} onClick={() => setActiveTab('roster')}>Roster</button>
             <button style={tabStyle('schedule')} onClick={() => setActiveTab('schedule')}>Schedule</button>
           </div>
         </div>
@@ -243,15 +245,6 @@ export default function TeamPage() {
                         { label: 'Name', align: 'left' },
                         { label: 'Pos', align: 'center' },
                         { label: 'GP', align: 'center' },
-                        { label: '2PM', align: 'center' },
-                        { label: '2PA', align: 'center' },
-                        { label: '2P%', align: 'center' },
-                        { label: '3PM', align: 'center' },
-                        { label: '3PA', align: 'center' },
-                        { label: '3P%', align: 'center' },
-                        { label: 'FTM', align: 'center' },
-                        { label: 'FTA', align: 'center' },
-                        { label: 'FT%', align: 'center' },
                         { label: 'PTS', align: 'center' },
                         { label: 'PPG', align: 'center' },
                         { label: 'RPG', align: 'center' },
@@ -275,15 +268,6 @@ export default function TeamPage() {
                           <span style={{ backgroundColor: '#2a2a2a', padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, color: '#888' }}>{player.position}</span>
                         </td>
                         <td style={{ padding: '11px 10px', textAlign: 'center', color: '#888', fontSize: '13px' }}>{player.gamesPlayed}</td>
-                        <td style={{ padding: '11px 10px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{player.twoPtMade}</td>
-                        <td style={{ padding: '11px 10px', textAlign: 'center', color: '#666', fontSize: '13px' }}>{player.twoPtAtt}</td>
-                        <td style={{ padding: '11px 10px', textAlign: 'center', color: player.twoPtPct !== '-' ? '#ccc' : '#444', fontSize: '13px' }}>{player.twoPtPct !== '-' ? `${player.twoPtPct}%` : '-'}</td>
-                        <td style={{ padding: '11px 10px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{player.threeMade}</td>
-                        <td style={{ padding: '11px 10px', textAlign: 'center', color: '#666', fontSize: '13px' }}>{player.threeAtt}</td>
-                        <td style={{ padding: '11px 10px', textAlign: 'center', color: player.threePct !== '-' ? '#ccc' : '#444', fontSize: '13px' }}>{player.threePct !== '-' ? `${player.threePct}%` : '-'}</td>
-                        <td style={{ padding: '11px 10px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{player.ftMade}</td>
-                        <td style={{ padding: '11px 10px', textAlign: 'center', color: '#666', fontSize: '13px' }}>{player.ftAtt}</td>
-                        <td style={{ padding: '11px 10px', textAlign: 'center', color: player.ftPct !== '-' ? '#ccc' : '#444', fontSize: '13px' }}>{player.ftPct !== '-' ? `${player.ftPct}%` : '-'}</td>
                         <td style={{ padding: '11px 10px', textAlign: 'center', color: '#fff', fontSize: '14px', fontWeight: 700 }}>{player.totalPoints}</td>
                         <td style={{ padding: '11px 10px', textAlign: 'center', color: '#4A9FE3', fontSize: '14px', fontWeight: 700 }}>{player.ppg}</td>
                         <td style={{ padding: '11px 10px', textAlign: 'center', color: '#ccc', fontSize: '13px' }}>{player.rpg}</td>
@@ -293,6 +277,47 @@ export default function TeamPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Roster Tab */}
+        {activeTab === 'roster' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '8px' }}>
+              <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: 0 }}>
+                {selectedSeason} Roster
+                {rosterLoading && <span style={{ color: '#555', fontSize: '14px', fontWeight: 400, marginLeft: '12px' }}>Loading...</span>}
+              </h2>
+              <span style={{ color: '#555', fontSize: '13px' }}>{team.players.length} player{team.players.length !== 1 ? 's' : ''}</span>
+            </div>
+            {team.players.length === 0 ? (
+              <div style={{ color: '#555', textAlign: 'center', padding: '48px', backgroundColor: '#1a1a1a', borderRadius: '10px', border: '1px solid #2a2a2a' }}>
+                No players found for this season
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', opacity: rosterLoading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                {team.players.map(player => (
+                  <Link key={player.id} href={`/players/${player.id}`} style={{ textDecoration: 'none' }}>
+                    <div
+                      style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = '#3a3a3a'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = '#2a2a2a'}
+                    >
+                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: team.color + '22', border: `2px solid ${team.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ color: team.color, fontWeight: 900, fontSize: '16px' }}>#{player.number}</span>
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                          <span style={{ backgroundColor: '#2a2a2a', padding: '1px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, color: '#888' }}>{player.position}</span>
+                          {player.gamesPlayed > 0 && <span style={{ color: '#555', fontSize: '11px' }}>{player.gamesPlayed} GP</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </div>
@@ -334,11 +359,12 @@ export default function TeamPage() {
                     const won = teamScore !== null && oppScore !== null && teamScore > oppScore
 
                     return (
-                      <div key={game.id} style={{
+                      <Link key={game.id} href={`/games/${game.id}`} style={{
                         backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
                         borderLeft: `3px solid ${won ? '#27AE60' : '#e74c3c'}`,
                         borderRadius: '8px', padding: '12px 16px',
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        textDecoration: 'none', cursor: 'pointer',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ color: won ? '#27AE60' : '#e74c3c', fontWeight: 700, fontSize: '12px', minWidth: '12px' }}>{won ? 'W' : 'L'}</span>
@@ -356,7 +382,7 @@ export default function TeamPage() {
                             {teamScore}–{oppScore}
                           </span>
                         </div>
-                      </div>
+                      </Link>
                     )
                   })}
                 </div>
@@ -375,9 +401,10 @@ export default function TeamPage() {
                   {upcomingGames.map(game => {
                     const opp = game.isHome ? game.awayTeam : game.homeTeam
                     return (
-                      <div key={game.id} style={{
+                      <Link key={game.id} href={`/games/${game.id}`} style={{
                         backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '12px 16px',
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        textDecoration: 'none', cursor: 'pointer',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ color: '#888', fontWeight: 700, fontSize: '12px' }}>{game.isHome ? 'HOME' : 'AWAY'}</span>
@@ -391,9 +418,9 @@ export default function TeamPage() {
                           <div style={{ color: '#4A9FE3', fontSize: '13px', fontWeight: 600 }}>
                             {new Date(game.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </div>
-                          <div style={{ color: '#555', fontSize: '11px' }}>{game.time} · Week {game.week}</div>
+                          <div style={{ color: '#555', fontSize: '11px' }}>{game.time} · Week {game.week}{game.court ? ` · ${game.court}` : ''}</div>
                         </div>
-                      </div>
+                      </Link>
                     )
                   })}
                 </div>

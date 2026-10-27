@@ -29,13 +29,11 @@ export async function POST(request: Request) {
       const registrationId = session.metadata?.registrationId
 
       if (registrationId) {
-        // Extract promo code if one was used
         let discountCode: string | null = null
         try {
           const discounts = session.total_details?.breakdown?.discounts ?? []
           const promoCode = discounts[0]?.discount?.promotion_code
           if (typeof promoCode === 'string') {
-            // promoCode is an ID — fetch the actual code string
             const Stripe2 = (await import('stripe')).default
             const stripe2 = new Stripe2(stripeKey!)
             const pc = await stripe2.promotionCodes.retrieve(promoCode)
@@ -52,6 +50,28 @@ export async function POST(request: Request) {
             stripeSession: session.id,
             amount: session.amount_total ?? 8000,
             ...(discountCode ? { discountCode } : {}),
+          },
+        })
+
+        try {
+          await addPlayerFromRegistration(reg)
+        } catch (err) {
+          console.error('Auto-roster error for registration', registrationId, err)
+        }
+      }
+    }
+
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object as any
+      const registrationId = pi.metadata?.registrationId
+
+      if (registrationId) {
+        const reg = await prisma.registration.update({
+          where: { id: registrationId },
+          data: {
+            paymentStatus: 'paid',
+            stripeSession: pi.id,
+            amount: pi.amount ?? 8000,
           },
         })
 

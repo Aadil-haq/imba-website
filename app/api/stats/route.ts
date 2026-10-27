@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0)
     const season = searchParams.get('season') || null   // e.g. "D1 2025-26 Winter"
     const league = searchParams.get('league') || null   // e.g. "Comp", "Rec", "35+"
-    const minGames = parseInt(searchParams.get('minGames') || '4')  // must have played 4+ games
+    const minGames = parseInt(searchParams.get('minGames') || '3')  // must have played 4+ games
 
     // Build game filter
     const gameWhere: Record<string, unknown> = { played: true }
@@ -37,6 +37,19 @@ export async function GET(request: Request) {
       _count: { gameId: true },
     })
 
+    // Compute non-DNP games played per player (DNP = all-zero stat row)
+    const rawGpRows = await prisma.playerGameStat.findMany({
+      where: statWhere,
+      select: { playerId: true, points: true, rebounds: true, assists: true, steals: true, blocks: true, twoPtMade: true, threeMade: true, ftMade: true },
+      take: 50000,
+    })
+    const gpByPlayer = new Map<string, number>()
+    for (const r of rawGpRows) {
+      if (r.points > 0 || r.rebounds > 0 || r.assists > 0 || r.steals > 0 || r.blocks > 0 || r.twoPtMade > 0 || r.threeMade > 0 || r.ftMade > 0) {
+        gpByPlayer.set(r.playerId, (gpByPlayer.get(r.playerId) ?? 0) + 1)
+      }
+    }
+
     const playerIds = stats.map((s) => s.playerId)
     // Exclude sub players from all leaderboards
     const players = await prisma.player.findMany({
@@ -51,11 +64,11 @@ export async function GET(request: Request) {
     const playerMap = new Map(players.map((p) => [p.id, p]))
 
     const allLeaders = stats
-      .filter(stat => stat._count.gameId >= minGames)
+      .filter(stat => (gpByPlayer.get(stat.playerId) ?? 0) >= minGames)
       .map((stat) => {
         const player = playerMap.get(stat.playerId)
         if (!player) return null
-        const g = stat._count.gameId
+        const g = gpByPlayer.get(stat.playerId) ?? 0
 
         const twoPtMade = stat._sum.twoPtMade ?? 0
         const twoPtAtt = stat._sum.twoPtAtt ?? 0

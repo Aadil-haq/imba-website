@@ -19,13 +19,13 @@ export async function GET(request: Request) {
       include: {
         homeGames: {
           where: gameWhere as any,
-          select: { homeScore: true, awayScore: true, date: true },
+          select: { homeScore: true, awayScore: true, date: true, forfeit: true, label: true },
           orderBy: { date: 'asc' },
           take: 500,
         },
         awayGames: {
           where: gameWhere as any,
-          select: { homeScore: true, awayScore: true, date: true },
+          select: { homeScore: true, awayScore: true, date: true, forfeit: true, label: true },
           orderBy: { date: 'asc' },
           take: 500,
         },
@@ -42,6 +42,14 @@ export async function GET(request: Request) {
 
         team.homeGames.forEach((g) => {
           if (g.homeScore !== null && g.awayScore !== null) {
+            if (g.forfeit && g.label === 'no-credit') {
+              // Only the forfeiting team (lower score) gets a loss; opponent gets nothing
+              if (g.homeScore < g.awayScore) {
+                losses++
+                gameResults.push({ result: 'L', date: g.date })
+              }
+              return
+            }
             pointsFor += g.homeScore
             pointsAgainst += g.awayScore
             gameResults.push({ result: g.homeScore > g.awayScore ? 'W' : 'L', date: g.date })
@@ -52,6 +60,14 @@ export async function GET(request: Request) {
 
         team.awayGames.forEach((g) => {
           if (g.homeScore !== null && g.awayScore !== null) {
+            if (g.forfeit && g.label === 'no-credit') {
+              // Only the forfeiting team (lower score) gets a loss; opponent gets nothing
+              if (g.awayScore < g.homeScore) {
+                losses++
+                gameResults.push({ result: 'L', date: g.date })
+              }
+              return
+            }
             pointsFor += g.awayScore
             pointsAgainst += g.homeScore
             gameResults.push({ result: g.awayScore > g.homeScore ? 'W' : 'L', date: g.date })
@@ -101,7 +117,8 @@ export async function GET(request: Request) {
       .filter(Boolean)
 
     standings.sort((a, b) => {
-      if (b!.wins !== a!.wins) return b!.wins - a!.wins
+      const pctDiff = parseFloat(b!.pct) - parseFloat(a!.pct)
+      if (pctDiff !== 0) return pctDiff
       return b!.diff - a!.diff
     })
 

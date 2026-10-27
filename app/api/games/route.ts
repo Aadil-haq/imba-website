@@ -16,8 +16,8 @@ export async function GET(request: Request) {
       where,
       take: 500,
       include: {
-        homeTeam: { select: { id: true, name: true, slug: true, color: true, logo: true } },
-        awayTeam: { select: { id: true, name: true, slug: true, color: true, logo: true } },
+        homeTeam: { select: { id: true, name: true, slug: true, color: true } },
+        awayTeam: { select: { id: true, name: true, slug: true, color: true } },
       },
       orderBy: [{ date: 'asc' }, { week: 'asc' }],
     })
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
         season: body.season || 'Spring 2025',
         league: body.league || 'Rec League',
         played: body.played ?? false,
+        court: body.court || null,
       },
       include: { homeTeam: true, awayTeam: true },
     })
