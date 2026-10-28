@@ -513,12 +513,18 @@ export default function AdminGamesPage() {
                       )}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', backgroundColor: g.played ? '#1a4731' : '#1a2a2a', color: g.played ? '#27AE60' : '#4A9FE3' }}>
-                        {g.played ? 'FINAL' : 'UPCOMING'}
+                      <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', backgroundColor: g.played ? '#1a4731' : g.homeScore !== null ? '#5c1a1a' : '#1a2a2a', color: g.played ? '#27AE60' : g.homeScore !== null ? '#ff6b6b' : '#4A9FE3' }}>
+                        {g.played ? 'FINAL' : g.homeScore !== null ? 'LIVE' : 'UPCOMING'}
                       </span>
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', gap: '6px' }}>
+                        <Link
+                          href={`/admin/games/${g.id}/live`}
+                          style={{ backgroundColor: '#5c1a1a', color: '#ff6b6b', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                        >
+                          ● Live
+                        </Link>
                         <button
                           onClick={() => { setScoreGame(g); setScore({ homeScore: String(g.homeScore ?? ''), awayScore: String(g.awayScore ?? '') }) }}
                           style={{ backgroundColor: '#1a3a5c', color: '#4A9FE3', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}

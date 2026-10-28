@@ -515,17 +515,19 @@ function SchedulePageContent() {
                           const awayWon = game.played && game.homeScore !== null && game.awayScore !== null && game.awayScore > game.homeScore
                           const homeLogo = teamLogos[game.homeTeamId]
                           const awayLogo = teamLogos[game.awayTeamId]
+                          // Live scorer writes running scores before the game is marked played
+                          const isLive = !game.played && game.homeScore !== null && game.awayScore !== null
 
                           return (
                             <div
                               key={game.id}
-                              onClick={() => game.played ? setSelectedGameId(game.id) : undefined}
+                              onClick={() => game.played ? setSelectedGameId(game.id) : isLive ? router.push(`/games/${game.id}`) : undefined}
                               style={{
                                 backgroundColor: '#1a1a1a',
                                 border: '1px solid #2a2a2a',
                                 borderRadius: '10px',
                                 padding: '14px 16px',
-                                cursor: game.played ? 'pointer' : 'default',
+                                cursor: game.played || isLive ? 'pointer' : 'default',
                                 transition: 'border-color 0.15s, background-color 0.15s',
                               }}
                               onMouseEnter={e => { if (game.played) { (e.currentTarget as HTMLElement).style.borderColor = '#3a3a3a'; (e.currentTarget as HTMLElement).style.backgroundColor = '#1e1e1e' } }}
@@ -559,7 +561,7 @@ function SchedulePageContent() {
 
                                 {/* Score / VS */}
                                 <div style={{ textAlign: 'center', flexShrink: 0, padding: '0 8px' }}>
-                                  {game.played ? (
+                                  {game.played || isLive ? (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                       <span style={{ color: awayWon ? '#4A9FE3' : '#cccccc', fontWeight: 900, fontSize: '18px' }}>{game.awayScore}</span>
                                       <span style={{ color: '#444', fontSize: '13px' }}>—</span>
@@ -605,10 +607,10 @@ function SchedulePageContent() {
                                 )}
                                 <span style={{
                                   padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
-                                  backgroundColor: game.played ? '#1a4731' : '#2a2a2a',
-                                  color: game.played ? '#27AE60' : '#888',
+                                  backgroundColor: game.played ? '#1a4731' : isLive ? '#c0392b' : '#2a2a2a',
+                                  color: game.played ? '#27AE60' : isLive ? '#fff' : '#888',
                                 }}>
-                                  {game.played ? 'FINAL' : 'UPCOMING'}
+                                  {game.played ? 'FINAL' : isLive ? '● LIVE' : 'UPCOMING'}
                                 </span>
                                 {game.played && (
                                   <span style={{ color: '#444', fontSize: '11px' }}>· tap for box score</span>

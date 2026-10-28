@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { checkAdminAuth } from '@/lib/auth'
+import { ensureGameEventTable } from '@/lib/liveStats'
 
 export async function GET(
   _request: Request,
@@ -78,6 +79,8 @@ export async function DELETE(
   try {
     const { id } = await params
     await prisma.playerGameStat.deleteMany({ where: { gameId: id } })
+    await ensureGameEventTable()
+    await prisma.gameEvent.deleteMany({ where: { gameId: id } })
     await prisma.game.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {

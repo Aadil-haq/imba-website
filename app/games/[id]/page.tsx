@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
+import { getGameEvents, EVENT_LABELS, type EventType } from '@/lib/liveStats'
+import LiveRefresh from '@/components/LiveRefresh'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +31,34 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
 
   if (!game) notFound()
 
+  // A game is live once the scorer has logged anything and it isn't final yet
+  const events = await getGameEvents(id)
+  const isLive = !game.played && events.length > 0
+  const showScore = game.played || isLive
+  const period = [...events].reverse().find(e => e.type === 'PERIOD')?.period ?? 1
+  const playerNames: Record<string, string> = {}
+  for (const s of game.playerStats) playerNames[s.playerId] = s.player.name
+  const teamColor = (teamId: string) => teamId === game.homeTeamId ? game.homeTeam.color : game.awayTeam.color
+
+  // Play-by-play, newest first; subs are logged as an OUT+IN pair in one batch
+  const plays: { key: string; period: number; teamId: string | null; text: string }[] = []
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]
+    const batch = events.filter(x => x.batchId === e.batchId)
+    if (batch[batch.length - 1].id !== e.id) continue
+    if (e.type === 'PERIOD') { plays.push({ key: e.id, period: e.period, teamId: null, text: `Start of period ${e.period}` }); continue }
+    const inE = batch.find(x => x.type === 'IN'), outE = batch.find(x => x.type === 'OUT')
+    const text = inE && outE
+      ? `Sub: ${playerNames[inE.playerId!] ?? '?'} in for ${playerNames[outE.playerId!] ?? '?'}`
+      : `${playerNames[e.playerId!] ?? 'Unknown'} ${EVENT_LABELS[e.type as EventType] ?? e.type}`
+    plays.push({ key: e.id, period: e.period, teamId: e.teamId, text })
+  }
+
+
+  // Players checked in by the live scorer played even if they never recorded a stat
+  const checkedIn = new Set(events.filter(e => e.type === 'IN').map(e => e.playerId))
   const isDnp = (s: typeof game.playerStats[0]) =>
+    !checkedIn.has(s.playerId) &&
     s.points === 0 && s.rebounds === 0 && s.assists === 0 &&
     s.steals === 0 && s.blocks === 0 && s.twoPtMade === 0 &&
     s.threeMade === 0 && s.ftMade === 0 && (s.fouls ?? 0) === 0
@@ -190,7 +219,7 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
                 </div>
               </Link>
               <div style={{ color: awayWon ? '#fff' : '#555', fontSize: 'clamp(40px, 12vw, 64px)', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em' }}>
-                {game.played ? game.awayScore : '—'}
+                {showScore ? (game.awayScore ?? 0) : '—'}
               </div>
             </div>
 
@@ -198,6 +227,11 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
             <div style={{ textAlign: 'center', flexShrink: 0 }}>
               {game.played ? (
                 <div style={{ backgroundColor: '#27AE60', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '4px 8px', borderRadius: '4px', letterSpacing: '0.08em' }}>FINAL</div>
+              ) : isLive ? (
+                <div>
+                  <div style={{ backgroundColor: '#c0392b', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '4px 8px', borderRadius: '4px', letterSpacing: '0.08em' }}>● LIVE</div>
+                  <div style={{ color: '#888', fontSize: '11px', fontWeight: 700, marginTop: '4px' }}>Period {period}</div>
+                </div>
               ) : (
                 <div style={{ color: '#4A9FE3', fontSize: '13px', fontWeight: 700 }}>{game.time}</div>
               )}
@@ -215,7 +249,7 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
                 </div>
               </Link>
               <div style={{ color: homeWon ? '#fff' : '#555', fontSize: 'clamp(40px, 12vw, 64px)', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em' }}>
-                {game.played ? game.homeScore : '—'}
+                {showScore ? (game.homeScore ?? 0) : '—'}
               </div>
             </div>
           </div>
@@ -241,7 +275,23 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
             </div>
           </>
         )}
+
+        {plays.length > 0 && (
+          <div style={{ marginTop: '32px' }}>
+            <div style={{ color: '#4A9FE3', fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '12px' }}>Play-by-Play</div>
+            <div style={{ backgroundColor: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '8px 20px', maxHeight: '480px', overflowY: 'auto' }}>
+              {plays.map(p => (
+                <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: '1px solid #1a1a1a' }}>
+                  <span style={{ color: '#555', fontSize: '11px', fontWeight: 700, width: '24px', flexShrink: 0 }}>P{p.period}</span>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: p.teamId ? teamColor(p.teamId) : '#444', flexShrink: 0 }} />
+                  <span style={{ color: '#ccc', fontSize: '13px' }}>{p.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+      {isLive && <LiveRefresh />}
     </div>
   )
 }

@@ -102,6 +102,22 @@ model PlayerGameStat {
   @@index([teamId])
 }
 
+// One row per tap on the live scorer. Rows are replayed to build the live box
+// score and synced into PlayerGameStat. Table is created on demand by
+// ensureGameEventTable() in lib/liveStats.ts (prod has no migration step).
+model GameEvent {
+  id        String   @id @default(cuid())
+  gameId    String
+  teamId    String
+  playerId  String?
+  type      String
+  period    Int      @default(1)
+  batchId   String
+  createdAt DateTime @default(now())
+
+  @@index([gameId])
+}
+
 model Registration {
   id            String   @id @default(cuid())
   firstName     String
