@@ -2,13 +2,13 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { replayEvents, fmtClock, EVENT_LABELS, MAX_ON_COURT, type EventType, type LiveEvent } from '@/lib/liveStatsShared'
+import { replayEvents, fmtClock, EVENT_LABELS, maxOnCourt, type EventType, type LiveEvent } from '@/lib/liveStatsShared'
 
 interface Team { id: string; name: string; color: string }
 interface Player { id: string; name: string; number: number; teamId: string; isSub: boolean }
 interface Game {
   id: string; homeTeamId: string; awayTeamId: string; homeTeam: Team; awayTeam: Team
-  season: string; played: boolean
+  season: string; league: string; played: boolean
 }
 interface LiveState {
   game: Game
@@ -185,6 +185,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
   const { game } = state
   const period = live.period
   const teams = [game.awayTeam, game.homeTeam]
+  const floorSize = maxOnCourt(game.league)
   const shownTeam = activeTeam ?? game.awayTeamId  // phone view shows one team at a time
   const selectedPlayer = selected ? playersById[selected] : null
   const selectedOnCourt = !!selected && !!selectedPlayer && live.onCourt[selectedPlayer.teamId]?.includes(selected)
@@ -222,7 +223,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
   const toggleStarter = (teamId: string, pid: string) => setLineup(prev => {
     const cur = prev[teamId] ?? []
     if (cur.includes(pid)) return { ...prev, [teamId]: cur.filter(x => x !== pid) }
-    if (cur.length >= MAX_ON_COURT) return prev
+    if (cur.length >= floorSize) return prev
     return { ...prev, [teamId]: [...cur, pid] }
   })
 
@@ -238,7 +239,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
       <div>
         <div style={{ color: '#fff', fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Starting lineups</div>
         <div style={{ color: '#777', fontSize: '13px', marginBottom: '14px' }}>
-          Pick up to {MAX_ON_COURT} starters for each team. <b>Start game</b> checks them in and starts the clock.
+          Pick up to {floorSize} starters for each team. <b>Start game</b> checks them in and starts the clock.
         </div>
         <div className="grid md:grid-cols-2" style={{ gap: '12px' }}>
           {teams.map(t => {
@@ -250,12 +251,12 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: t.color, flexShrink: 0 }} />
                     <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px' }}>{t.name}</span>
                   </div>
-                  <span style={{ color: picks.length === MAX_ON_COURT ? '#27AE60' : '#888', fontSize: '12px', fontWeight: 800 }}>{picks.length}/{MAX_ON_COURT}</span>
+                  <span style={{ color: picks.length === floorSize ? '#27AE60' : '#888', fontSize: '12px', fontWeight: 800 }}>{picks.length}/{floorSize}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '6px' }}>
                   {(state.players[t.id] ?? []).map(p => {
                     const on = picks.includes(p.id)
-                    const full = !on && picks.length >= MAX_ON_COURT
+                    const full = !on && picks.length >= floorSize
                     return (
                       <button key={p.id} onClick={() => toggleStarter(t.id, p.id)} disabled={full}
                         style={{
@@ -319,7 +320,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     const teamId = selectedPlayer.teamId
     if (selectedOnCourt) {
       setMode({ kind: 'subIn', teamId, outId: selectedPlayer.id })
-    } else if (live.onCourt[teamId].length >= MAX_ON_COURT) {
+    } else if (live.onCourt[teamId].length >= floorSize) {
       setMode({ kind: 'subOut', teamId, inId: selectedPlayer.id })
     } else {
       log([{ teamId, playerId: selectedPlayer.id, type: 'IN', period }])

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { prisma } from '@/lib/db'
 import { checkAdminAuth } from '@/lib/auth'
-import { EVENT_TYPES, CLOCK_TYPES, MAX_ON_COURT, getGameEvents, replayEvents, syncGameFromEvents, ensureGameEventTable } from '@/lib/liveStats'
+import { EVENT_TYPES, CLOCK_TYPES, maxOnCourt, getGameEvents, replayEvents, syncGameFromEvents, ensureGameEventTable } from '@/lib/liveStats'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -74,14 +74,14 @@ export async function POST(request: Request, { params }: Params) {
     const batchId = randomUUID()
     const now = Date.now()
 
-    // Never allow more than five on the floor per team
+    // Never allow more than a full lineup on the floor (4 for 35+, 5 otherwise)
     const existing = await getGameEvents(id)
     const preview = replayEvents([
       ...existing,
       ...valid.map((e: any, i: number) => ({ ...e, id: `new-${i}`, gameId: id, batchId, createdAt: new Date(now + i), playerId: e.playerId ?? null })),
     ], game.homeTeamId, game.awayTeamId, now)
     for (const onCourt of Object.values(preview.onCourt)) {
-      if (onCourt.length > MAX_ON_COURT) {
+      if (onCourt.length > maxOnCourt(game.league)) {
         return NextResponse.json({ error: `That would put ${onCourt.length} players on the floor for one team. Sub someone out first.` }, { status: 409 })
       }
     }

@@ -19,7 +19,8 @@ export const EVENT_LABELS: Record<EventType, string> = {
 }
 
 export const CLOCK_TYPES: string[] = ['CLOCK_START', 'CLOCK_STOP', 'CLOCK_SET']
-export const MAX_ON_COURT = 5
+// 35+ league plays 4v4; every other league is 5v5
+export const maxOnCourt = (league: string) => (/35\+/.test(league) ? 4 : 5)
 
 const POINTS: Partial<Record<EventType, number>> = { '2PM': 2, '3PM': 3, FTM: 1 }
 
