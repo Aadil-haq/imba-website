@@ -112,6 +112,7 @@ model GameEvent {
   playerId  String?
   type      String
   period    Int      @default(1)
+  value     Int?
   batchId   String
   createdAt DateTime @default(now())
 

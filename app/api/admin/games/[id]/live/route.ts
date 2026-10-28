@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { prisma } from '@/lib/db'
 import { checkAdminAuth } from '@/lib/auth'
-import { EVENT_TYPES, getGameEvents, replayEvents, syncGameFromEvents, ensureGameEventTable } from '@/lib/liveStats'
+import { EVENT_TYPES, CLOCK_TYPES, MAX_ON_COURT, getGameEvents, replayEvents, syncGameFromEvents, ensureGameEventTable } from '@/lib/liveStats'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -40,6 +40,7 @@ async function liveState(gameId: string) {
     events,
     live: replayEvents(events, game.homeTeamId, game.awayTeamId),
     hasManualStats: manualStatCount > 0,
+    serverNow: Date.now(),  // lets the scorer correct for its own clock drift
   }
 }
 
@@ -65,17 +66,30 @@ export async function POST(request: Request, { params }: Params) {
     const valid = incoming.filter((e: any) =>
       EVENT_TYPES.includes(e.type) &&
       (e.teamId === game.homeTeamId || e.teamId === game.awayTeamId) &&
-      (e.type === 'PERIOD' || typeof e.playerId === 'string')
+      (e.type === 'PERIOD' || CLOCK_TYPES.includes(e.type) || typeof e.playerId === 'string')
     )
     if (!valid.length) return NextResponse.json({ error: 'No valid events' }, { status: 400 })
 
     await ensureGameEventTable()
     const batchId = randomUUID()
     const now = Date.now()
+
+    // Never allow more than five on the floor per team
+    const existing = await getGameEvents(id)
+    const preview = replayEvents([
+      ...existing,
+      ...valid.map((e: any, i: number) => ({ ...e, id: `new-${i}`, gameId: id, batchId, createdAt: new Date(now + i), playerId: e.playerId ?? null })),
+    ], game.homeTeamId, game.awayTeamId, now)
+    for (const onCourt of Object.values(preview.onCourt)) {
+      if (onCourt.length > MAX_ON_COURT) {
+        return NextResponse.json({ error: `That would put ${onCourt.length} players on the floor for one team. Sub someone out first.` }, { status: 409 })
+      }
+    }
     await prisma.gameEvent.createMany({
       data: valid.map((e: any, i: number) => ({
         gameId: id, teamId: e.teamId, playerId: e.playerId ?? null, type: e.type,
         period: Math.max(1, parseInt(e.period) || 1), batchId,
+        value: Number.isFinite(e.value) ? Math.round(e.value) : null,
         createdAt: new Date(now + i), // keeps batch order stable
       })),
     })
@@ -113,6 +127,12 @@ export async function PATCH(request: Request, { params }: Params) {
   try {
     const { action } = await request.json()
     if (action === 'final') {
+      // Stop the clock so minutes freeze at the final buzzer
+      const game = await prisma.game.findUnique({ where: { id } })
+      const events = await getGameEvents(id)
+      if (game && replayEvents(events, game.homeTeamId, game.awayTeamId).clock.running) {
+        await prisma.gameEvent.create({ data: { gameId: id, teamId: game.homeTeamId, type: 'CLOCK_STOP', period: events[events.length - 1]?.period ?? 1, batchId: randomUUID() } })
+      }
       await syncGameFromEvents(id)
       await prisma.game.update({ where: { id }, data: { played: true } })
     } else if (action === 'reopen') {

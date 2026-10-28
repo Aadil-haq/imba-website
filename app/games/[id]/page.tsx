@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
-import { getGameEvents, EVENT_LABELS, type EventType } from '@/lib/liveStats'
+import { getGameEvents, replayEvents, fmtClock, CLOCK_TYPES, EVENT_LABELS, type EventType } from '@/lib/liveStats'
 import LiveRefresh from '@/components/LiveRefresh'
 
 export const dynamic = 'force-dynamic'
@@ -35,25 +35,34 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
   const events = await getGameEvents(id)
   const isLive = !game.played && events.length > 0
   const showScore = game.played || isLive
-  const period = [...events].reverse().find(e => e.type === 'PERIOD')?.period ?? 1
+  // Minutes, +/- and the game clock come from replaying the scorer's events
+  const live = events.length ? replayEvents(events, game.homeTeamId, game.awayTeamId) : null
+  const period = live?.period ?? 1
+  const timeOfDay = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
   const playerNames: Record<string, string> = {}
   for (const s of game.playerStats) playerNames[s.playerId] = s.player.name
   const teamColor = (teamId: string) => teamId === game.homeTeamId ? game.homeTeam.color : game.awayTeam.color
 
   // Play-by-play, newest first; subs are logged as an OUT+IN pair in one batch
-  const plays: { key: string; period: number; teamId: string | null; text: string }[] = []
+  const plays: { key: string; period: number; clock: string; time: string; teamId: string | null; text: string; isSub: boolean }[] = []
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i]
     const batch = events.filter(x => x.batchId === e.batchId)
-    if (batch[batch.length - 1].id !== e.id) continue
-    if (e.type === 'PERIOD') { plays.push({ key: e.id, period: e.period, teamId: null, text: `Start of period ${e.period}` }); continue }
+    if (batch[batch.length - 1].id !== e.id || batch.every(x => CLOCK_TYPES.includes(x.type))) continue
+    const at = live?.eventClock[batch[0].id] ?? { period: e.period, periodSec: 0 }
+    const stamp = { period: at.period, clock: fmtClock(at.periodSec), time: timeOfDay(new Date(batch[0].createdAt)) }
+    if (e.type === 'PERIOD') { plays.push({ key: e.id, ...stamp, teamId: null, text: `Start of period ${e.period}`, isSub: false }); continue }
     const inE = batch.find(x => x.type === 'IN'), outE = batch.find(x => x.type === 'OUT')
+    const ins = batch.filter(x => x.type === 'IN')
+    if (ins.length > 1) {
+      plays.push({ key: e.id, ...stamp, teamId: null, text: `Tip-off. Starters: ${ins.map(x => playerNames[x.playerId!] ?? '?').join(', ')}`, isSub: true })
+      continue
+    }
     const text = inE && outE
       ? `Sub: ${playerNames[inE.playerId!] ?? '?'} in for ${playerNames[outE.playerId!] ?? '?'}`
       : `${playerNames[e.playerId!] ?? 'Unknown'} ${EVENT_LABELS[e.type as EventType] ?? e.type}`
-    plays.push({ key: e.id, period: e.period, teamId: e.teamId, text })
+    plays.push({ key: e.id, ...stamp, teamId: e.teamId, text, isSub: !!(inE || outE) })
   }
-
 
   // Players checked in by the live scorer played even if they never recorded a stat
   const checkedIn = new Set(events.filter(e => e.type === 'IN').map(e => e.playerId))
@@ -126,6 +135,8 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
               <tr style={{ backgroundColor: '#0d0d0d' }}>
                 <th style={{ padding: '9px 14px', textAlign: 'left', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>#</th>
                 <th style={{ padding: '9px 14px', textAlign: 'left', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>PLAYER</th>
+                {live && <th style={{ padding: '9px 10px', textAlign: 'center', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>MIN</th>}
+                {live && <th style={{ padding: '9px 10px', textAlign: 'center', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>+/-</th>}
                 {statCols.map(c => (
                   <th key={c.key} style={{ padding: '9px 10px', textAlign: 'center', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>{c.label}</th>
                 ))}
@@ -140,6 +151,11 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
                       {s.player.name}
                     </Link>
                   </td>
+                  {live && <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{fmtClock(live.lines[s.playerId]?.seconds ?? 0)}</td>}
+                  {live && (() => {
+                    const pm = live.lines[s.playerId]?.plusMinus ?? 0
+                    return <td style={{ padding: '10px', textAlign: 'center', color: pm > 0 ? '#27AE60' : pm < 0 ? '#e74c3c' : '#aaa', fontSize: '13px', fontWeight: 700 }}>{pm > 0 ? `+${pm}` : pm}</td>
+                  })()}
                   <td style={{ padding: '10px', textAlign: 'center', color: '#fff', fontWeight: 700, fontSize: '13px' }}>{s.points ?? 0}</td>
                   <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.rebounds ?? 0}</td>
                   <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.assists ?? 0}</td>
@@ -157,6 +173,8 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
               <tr style={{ backgroundColor: '#0a0a0a', borderTop: '2px solid #222' }}>
                 <td style={{ padding: '10px 14px' }} />
                 <td style={{ padding: '10px 14px', color: '#666', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>TOTALS</td>
+                {live && <td />}
+                {live && <td />}
                 <td style={{ padding: '10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 800, fontSize: '13px' }}>{totals.points}</td>
                 <td style={{ padding: '10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 700, fontSize: '13px' }}>{totals.rebounds}</td>
                 <td style={{ padding: '10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 700, fontSize: '13px' }}>{totals.assists}</td>
@@ -230,7 +248,7 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
               ) : isLive ? (
                 <div>
                   <div style={{ backgroundColor: '#c0392b', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '4px 8px', borderRadius: '4px', letterSpacing: '0.08em' }}>● LIVE</div>
-                  <div style={{ color: '#888', fontSize: '11px', fontWeight: 700, marginTop: '4px' }}>Period {period}</div>
+                  <div style={{ color: '#888', fontSize: '11px', fontWeight: 700, marginTop: '4px' }}>Period {period}{live && ` · ${fmtClock(live.clock.periodSec)}`}</div>
                 </div>
               ) : (
                 <div style={{ color: '#4A9FE3', fontSize: '13px', fontWeight: 700 }}>{game.time}</div>
@@ -282,9 +300,10 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
             <div style={{ backgroundColor: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '8px 20px', maxHeight: '480px', overflowY: 'auto' }}>
               {plays.map(p => (
                 <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: '1px solid #1a1a1a' }}>
-                  <span style={{ color: '#555', fontSize: '11px', fontWeight: 700, width: '24px', flexShrink: 0 }}>P{p.period}</span>
+                  <span style={{ color: '#666', fontSize: '11px', fontWeight: 700, width: '64px', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>P{p.period} {p.clock}</span>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: p.teamId ? teamColor(p.teamId) : '#444', flexShrink: 0 }} />
-                  <span style={{ color: '#ccc', fontSize: '13px' }}>{p.text}</span>
+                  <span style={{ color: p.isSub ? '#fff' : '#ccc', fontSize: '13px', fontWeight: p.isSub ? 700 : 400, flex: 1 }}>{p.text}</span>
+                  <span style={{ color: '#555', fontSize: '11px', flexShrink: 0 }}>{p.time}</span>
                 </div>
               ))}
             </div>

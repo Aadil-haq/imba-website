@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { replayEvents, EVENT_LABELS, type EventType, type LiveEvent } from '@/lib/liveStatsShared'
+import { replayEvents, fmtClock, EVENT_LABELS, MAX_ON_COURT, type EventType, type LiveEvent } from '@/lib/liveStatsShared'
 
 interface Team { id: string; name: string; color: string }
 interface Player { id: string; name: string; number: number; teamId: string; isSub: boolean }
@@ -15,8 +15,9 @@ interface LiveState {
   players: Record<string, Player[]>
   events: LiveEvent[]
   hasManualStats: boolean
+  serverNow: number
 }
-type NewEvent = { teamId: string; playerId?: string; type: EventType; period: number }
+type NewEvent = { teamId: string; playerId?: string; type: EventType; period: number; value?: number }
 
 // What the action pad is asking for after the first tap
 type Mode =
@@ -57,6 +58,9 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
   const [activeTeam, setActiveTeam] = useState<string | null>(null)
   const [subName, setSubName] = useState('')
   const [addingSubFor, setAddingSubFor] = useState<string | null>(null)
+  const [lineup, setLineup] = useState<Record<string, string[]>>({})  // starting five picks
+  const [serverOffset, setServerOffset] = useState(0)  // server time minus this device's time
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   const [myBatches, setMyBatches] = useState<string[]>([])  // batches this device logged, for Undo
   const queue = useRef<Promise<unknown>>(Promise.resolve())
@@ -64,12 +68,17 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
 
   const api = `/api/admin/games/${id}/live`
 
+  const applyState = (data: LiveState) => {
+    setState(data)
+    if (data.serverNow) setServerOffset(data.serverNow - Date.now())
+  }
+
   const load = useCallback(async () => {
     if (inFlight.current > 0) return
     const res = await fetch(api)
     if (!res.ok) { setError('Could not load game'); return }
     const data = await res.json()
-    if (inFlight.current === 0) setState(data)
+    if (inFlight.current === 0) applyState(data)
   }, [api])
 
   // Initial load + poll so two scorers see each other's entries
@@ -79,10 +88,16 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     return () => clearInterval(t)
   }, [load])
 
+  // Tick once a second so the game clock and minutes stay current
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
   const events = useMemo(() => [...(state?.events ?? []), ...pending], [state, pending])
   const live = useMemo(
-    () => state ? replayEvents(events, state.game.homeTeamId, state.game.awayTeamId) : null,
-    [events, state],
+    () => state ? replayEvents(events, state.game.homeTeamId, state.game.awayTeamId, nowMs + serverOffset) : null,
+    [events, state, nowMs, serverOffset],
   )
 
   const playersById = useMemo(() => {
@@ -111,7 +126,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     }).then(data => {
       if (inFlight.current === 0) {
         setPending([])
-        if (data?.game) setState(data)
+        if (data?.game) applyState(data)
         else load()
       }
     })
@@ -119,10 +134,10 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
 
   const log = (newEvents: NewEvent[]) => {
     const batchId = `temp-${++tempId}`
-    const now = Date.now()
+    const now = Date.now() + serverOffset
     setPending(prev => [...prev, ...newEvents.map((e, i) => ({
       id: `${batchId}-${i}`, gameId: id, teamId: e.teamId, playerId: e.playerId ?? null,
-      type: e.type, period: e.period, batchId, createdAt: new Date(now + i).toISOString(),
+      type: e.type, period: e.period, value: e.value ?? null, batchId, createdAt: new Date(now + i).toISOString(),
     }))])
     send(() => fetch(api, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -171,7 +186,6 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
   const period = live.period
   const teams = [game.awayTeam, game.homeTeam]
   const shownTeam = activeTeam ?? game.awayTeamId  // phone view shows one team at a time
-  const teamOf = (pid: string) => playersById[pid]?.teamId
   const selectedPlayer = selected ? playersById[selected] : null
   const selectedOnCourt = !!selected && !!selectedPlayer && live.onCourt[selectedPlayer.teamId]?.includes(selected)
 
@@ -179,6 +193,94 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     events.filter(e => e.type === 'FOUL' && e.teamId === teamId && e.period === period).length
 
   const canUndo = pending.length === 0 && myBatches.length > 0
+
+  // ── Clock controls ──
+  const toggleClock = () =>
+    log([{ teamId: game.homeTeamId, type: live.clock.running ? 'CLOCK_STOP' : 'CLOCK_START', period }])
+
+  const setClock = () => {
+    const input = window.prompt(`Set the P${period} clock (time elapsed in this period, m:ss)`, fmtClock(live.clock.periodSec))
+    if (!input) return
+    const m = input.trim().match(/^(\d{1,2})(?::(\d{1,2}))?$/)
+    if (!m) { setError('Use m:ss, e.g. 12:30'); return }
+    log([{ teamId: game.homeTeamId, type: 'CLOCK_SET', period, value: parseInt(m[1]) * 60 + parseInt(m[2] ?? '0') }])
+  }
+
+  const nextPeriod = () => {
+    if (!confirm(`End period ${period} and start period ${period + 1}? The clock will stop and reset.`)) return
+    log([{ teamId: game.homeTeamId, type: 'PERIOD', period: period + 1 }])
+  }
+
+  const clockAt = (e: LiveEvent) => live.eventClock[e.id] ?? { period: e.period, periodSec: 0 }
+  const timeOfDay = (e: LiveEvent) => new Date(e.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const isSub = (items: LiveEvent[]) => items.some(i => i.type === 'IN' || i.type === 'OUT')
+
+  // ── Starting lineups ──
+  // Before anyone has checked in, pick each team's starters, then tip off
+  const needsLineup = !game.played && !events.some(e => e.type === 'IN')
+
+  const toggleStarter = (teamId: string, pid: string) => setLineup(prev => {
+    const cur = prev[teamId] ?? []
+    if (cur.includes(pid)) return { ...prev, [teamId]: cur.filter(x => x !== pid) }
+    if (cur.length >= MAX_ON_COURT) return prev
+    return { ...prev, [teamId]: [...cur, pid] }
+  })
+
+  const startGame = () => {
+    const ins: NewEvent[] = teams.flatMap(t => (lineup[t.id] ?? []).map(pid => ({ teamId: t.id, playerId: pid, type: 'IN' as EventType, period })))
+    log([...ins, { teamId: game.homeTeamId, type: 'CLOCK_START', period }])
+    setLineup({})
+  }
+
+  const renderLineupPicker = () => {
+    const ready = teams.every(t => (lineup[t.id] ?? []).length > 0)
+    return (
+      <div>
+        <div style={{ color: '#fff', fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Starting lineups</div>
+        <div style={{ color: '#777', fontSize: '13px', marginBottom: '14px' }}>
+          Pick up to {MAX_ON_COURT} starters for each team. <b>Start game</b> checks them in and starts the clock.
+        </div>
+        <div className="grid md:grid-cols-2" style={{ gap: '12px' }}>
+          {teams.map(t => {
+            const picks = lineup[t.id] ?? []
+            return (
+              <div key={t.id} style={{ backgroundColor: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: t.color, flexShrink: 0 }} />
+                    <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px' }}>{t.name}</span>
+                  </div>
+                  <span style={{ color: picks.length === MAX_ON_COURT ? '#27AE60' : '#888', fontSize: '12px', fontWeight: 800 }}>{picks.length}/{MAX_ON_COURT}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '6px' }}>
+                  {(state.players[t.id] ?? []).map(p => {
+                    const on = picks.includes(p.id)
+                    const full = !on && picks.length >= MAX_ON_COURT
+                    return (
+                      <button key={p.id} onClick={() => toggleStarter(t.id, p.id)} disabled={full}
+                        style={{
+                          ...btn, textAlign: 'left', padding: '10px', fontWeight: 700, fontSize: '13px',
+                          backgroundColor: on ? t.color : '#151515', border: `2px solid ${on ? '#fff' : '#222'}`,
+                          opacity: full ? 0.35 : 1,
+                        }}>
+                        <span style={{ fontWeight: 900, marginRight: '6px' }}>{on ? '✓' : (p.isSub ? 'S' : (p.number || '–'))}</span>{p.name}
+                      </button>
+                    )
+                  })}
+                </div>
+                {renderAddSub(t.id)}
+              </div>
+            )
+          })}
+        </div>
+        <button onClick={startGame} disabled={!ready}
+          style={{ ...btn, width: '100%', marginTop: '14px', backgroundColor: ready ? '#27AE60' : '#1a1a1a', color: ready ? '#fff' : '#555', padding: '16px', fontSize: '16px' }}>
+          ▶ Start game
+        </button>
+      </div>
+    )
+  }
+
 
   const clearSelection = () => { setSelected(null); setMode({ kind: 'stat' }) }
 
@@ -217,7 +319,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     const teamId = selectedPlayer.teamId
     if (selectedOnCourt) {
       setMode({ kind: 'subIn', teamId, outId: selectedPlayer.id })
-    } else if (live.onCourt[teamId].length >= 5) {
+    } else if (live.onCourt[teamId].length >= MAX_ON_COURT) {
       setMode({ kind: 'subOut', teamId, inId: selectedPlayer.id })
     } else {
       log([{ teamId, playerId: selectedPlayer.id, type: 'IN', period }])
@@ -242,7 +344,12 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
   const describe = (items: LiveEvent[]) => {
     const e = items[0]
     if (e.type === 'PERIOD') return `Start of period ${e.period}`
-    const sub = items.length === 2 && items.some(i => i.type === 'IN') && items.some(i => i.type === 'OUT')
+    if (e.type === 'CLOCK_START') return 'Clock started'
+    if (e.type === 'CLOCK_STOP') return 'Clock stopped'
+    if (e.type === 'CLOCK_SET') return `Clock set to ${fmtClock(e.value ?? 0)}`
+    const ins = items.filter(i => i.type === 'IN')
+    if (ins.length > 1) return `Starting lineups checked in (${ins.length})${items.some(i => i.type === 'CLOCK_START') ? ', clock started' : ''}`
+    const sub = items.length === 2 && ins.length === 1 && items.some(i => i.type === 'OUT')
     if (sub) {
       const inP = playersById[items.find(i => i.type === 'IN')!.playerId!]
       const outP = playersById[items.find(i => i.type === 'OUT')!.playerId!]
@@ -250,6 +357,26 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     }
     return `${playersById[e.playerId!]?.name ?? 'Unknown'} ${EVENT_LABELS[e.type as EventType] ?? e.type}`
   }
+
+  const renderAddSub = (teamId: string) => (
+    addingSubFor === teamId ? (
+      <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
+        <input
+          autoFocus value={subName} onChange={e => setSubName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addSub(teamId)}
+          placeholder="Sub's name"
+          style={{ flex: 1, minWidth: 0, backgroundColor: '#0d0d0d', color: '#fff', border: '1px solid #333', borderRadius: '8px', padding: '8px 10px', fontSize: '14px' }}
+        />
+        <button onClick={() => addSub(teamId)} style={{ ...btn, backgroundColor: '#27AE60', padding: '8px 14px', fontSize: '13px' }}>Add</button>
+        <button onClick={() => setAddingSubFor(null)} style={{ ...btn, backgroundColor: '#2a2a2a', padding: '8px 12px', fontSize: '13px' }}>✕</button>
+      </div>
+    ) : (
+      <button onClick={() => { setAddingSubFor(teamId); setSubName('') }}
+        style={{ ...btn, marginTop: '10px', backgroundColor: 'transparent', border: '1px dashed #333', color: '#777', padding: '8px', width: '100%', fontSize: '12px' }}>
+        + Add sub player
+      </button>
+    )
+  )
 
   const renderTeamPanel = (team: Team) => {
     const roster = state.players[team.id] ?? []
@@ -281,6 +408,11 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
           <div style={{ fontSize: '11px', color: isSel ? '#fff' : '#777', marginTop: '3px', fontWeight: 600 }}>
             {l ? `${l.points} pts · ${l.rebounds} reb · ${l.assists} ast · ${l.fouls} PF` : '—'}
           </div>
+          {l && (
+            <div style={{ fontSize: '11px', color: isSel ? '#fff' : '#999', marginTop: '2px', fontWeight: 700 }}>
+              {fmtClock(l.seconds)} min · <span style={{ color: isSel ? '#fff' : l.plusMinus > 0 ? '#27AE60' : l.plusMinus < 0 ? '#e74c3c' : '#999' }}>{l.plusMinus > 0 ? '+' : ''}{l.plusMinus}</span>
+            </div>
+          )}
         </button>
       )
     }
@@ -301,7 +433,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
           ON FLOOR ({floor.length})
         </div>
         {floor.length === 0 ? (
-          <div style={{ color: '#555', fontSize: '12px', marginBottom: '10px' }}>Nobody checked in yet. Tap a player below, then <b>Check in</b>. You can also log stats without setting a lineup.</div>
+          <div style={{ color: '#555', fontSize: '12px', marginBottom: '10px' }}>Nobody on the floor. Tap a bench player, then <b>Check in</b>.</div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '6px', marginBottom: '12px' }}>
             {floor.map(p => renderPlayer(p, true))}
@@ -314,23 +446,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
         </div>
         {roster.length === 0 && <div style={{ color: '#555', fontSize: '12px' }}>No roster found for {game.season}. Add players under Teams & Roster, or add subs below.</div>}
 
-        {addingSubFor === team.id ? (
-          <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
-            <input
-              autoFocus value={subName} onChange={e => setSubName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addSub(team.id)}
-              placeholder="Sub's name"
-              style={{ flex: 1, minWidth: 0, backgroundColor: '#0d0d0d', color: '#fff', border: '1px solid #333', borderRadius: '8px', padding: '8px 10px', fontSize: '14px' }}
-            />
-            <button onClick={() => addSub(team.id)} style={{ ...btn, backgroundColor: '#27AE60', padding: '8px 14px', fontSize: '13px' }}>Add</button>
-            <button onClick={() => setAddingSubFor(null)} style={{ ...btn, backgroundColor: '#2a2a2a', padding: '8px 12px', fontSize: '13px' }}>✕</button>
-          </div>
-        ) : (
-          <button onClick={() => { setAddingSubFor(team.id); setSubName('') }}
-            style={{ ...btn, marginTop: '10px', backgroundColor: 'transparent', border: '1px dashed #333', color: '#777', padding: '8px', width: '100%', fontSize: '12px' }}>
-            + Add sub player
-          </button>
-        )}
+        {renderAddSub(team.id)}
       </div>
     )
   }
@@ -360,11 +476,20 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
               backgroundColor: game.played ? '#1a4731' : '#5c1a1a', color: game.played ? '#27AE60' : '#ff6b6b',
               fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', letterSpacing: '0.08em', marginBottom: '4px',
             }}>{game.played ? 'FINAL' : 'LIVE'}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button onClick={setClock} title="Tap to correct the clock"
+              style={{ ...btn, backgroundColor: 'transparent', color: live.clock.running ? '#fff' : '#F5A623', fontSize: '22px', fontWeight: 900, padding: '0 4px', fontVariantNumeric: 'tabular-nums' }}>
+              {fmtClock(live.clock.periodSec)}
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+              {!game.played && (
+                <button onClick={toggleClock}
+                  style={{ ...btn, backgroundColor: live.clock.running ? '#5c1a1a' : '#1a4731', color: live.clock.running ? '#ff8a8a' : '#27AE60', padding: '4px 8px', fontSize: '11px' }}>
+                  {live.clock.running ? '❚❚ Stop' : '▶ Start'}
+                </button>
+              )}
               <span style={{ color: '#888', fontSize: '12px', fontWeight: 700 }}>P{period}</span>
-              <button
-                onClick={() => log([{ teamId: game.homeTeamId, type: 'PERIOD', period: period + 1 }])}
-                style={{ ...btn, backgroundColor: '#222', color: '#aaa', padding: '3px 8px', fontSize: '11px' }}
+              <button onClick={nextPeriod}
+                style={{ ...btn, backgroundColor: '#222', color: '#aaa', padding: '4px 8px', fontSize: '11px' }}
               >Next ▸</button>
             </div>
           </div>
@@ -377,12 +502,19 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '12px 16px' }}>
+        {!game.played && !live.clock.running && !needsLineup && (
+          <div style={{ backgroundColor: '#3a2a10', border: '1px solid #F5A62355', color: '#F5A623', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ flex: 1 }}>Clock is stopped, so minutes aren&apos;t counting. Start it when play resumes.</span>
+            <button onClick={toggleClock} style={{ ...btn, backgroundColor: '#1a4731', color: '#27AE60', padding: '6px 12px', fontSize: '12px' }}>▶ Start clock</button>
+          </div>
+        )}
         {state.hasManualStats && (
           <div style={{ backgroundColor: '#3a2a10', border: '1px solid #F5A62355', color: '#F5A623', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', marginBottom: '12px' }}>
             This game already has stats entered by hand. Live scoring will overwrite the stat line of any player you log.
           </div>
         )}
 
+        {needsLineup ? renderLineupPicker() : (<>
         {/* Team toggle on phones; both columns side by side on tablets and up */}
         <div className="md:hidden" style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
           {teams.map(t => (
@@ -405,14 +537,17 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
           <div style={{ color: '#4A9FE3', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '8px' }}>PLAY-BY-PLAY</div>
           {batches.length === 0 && <div style={{ color: '#444', fontSize: '13px' }}>Nothing logged yet.</div>}
           {batches.slice(0, 40).map(b => {
-            const teamId = b.items[0].type === 'PERIOD' ? null : b.items[0].teamId
+            const teamId = b.items[0].playerId ? b.items[0].teamId : null
             const team = teams.find(t => t.id === teamId)
             const isPending = b.batchId.startsWith('temp-')
             return (
               <div key={b.batchId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 0', borderBottom: '1px solid #1a1a1a', opacity: isPending ? 0.5 : 1 }}>
-                <span style={{ color: '#555', fontSize: '11px', width: '24px', flexShrink: 0 }}>P{b.items[0].period}</span>
+                <span style={{ color: '#666', fontSize: '11px', width: '64px', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  P{clockAt(b.items[0]).period} {fmtClock(clockAt(b.items[0]).periodSec)}
+                </span>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: team?.color ?? '#444', flexShrink: 0 }} />
-                <span style={{ color: '#ccc', fontSize: '13px', flex: 1 }}>{describe(b.items)}</span>
+                <span style={{ color: isSub(b.items) ? '#fff' : '#ccc', fontSize: '13px', flex: 1, fontWeight: isSub(b.items) ? 700 : 400 }}>{describe(b.items)}</span>
+                <span style={{ color: '#555', fontSize: '11px', flexShrink: 0 }}>{timeOfDay(b.items[0])}</span>
                 {!isPending && (
                   <button onClick={() => removeBatch(b.batchId)} aria-label="Delete play"
                     style={{ ...btn, backgroundColor: 'transparent', color: '#555', fontSize: '16px', padding: '2px 8px' }}>✕</button>
@@ -421,10 +556,11 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
             )
           })}
         </div>
+        </>)}
       </div>
 
       {/* Action pad */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 30, backgroundColor: '#111', borderTop: '1px solid #2a2a2a', padding: '10px 12px calc(10px + env(safe-area-inset-bottom))' }}>
+      {!needsLineup && <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 30, backgroundColor: '#111', borderTop: '1px solid #2a2a2a', padding: '10px 12px calc(10px + env(safe-area-inset-bottom))' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <div style={{ flex: 1, color: selectedPlayer || mode.kind !== 'stat' ? '#fff' : '#666', fontSize: '14px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -453,7 +589,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
             </button>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }

@@ -16,10 +16,13 @@ export function ensureGameEventTable() {
         "playerId" TEXT,
         "type" TEXT NOT NULL,
         "period" INTEGER NOT NULL DEFAULT 1,
+        "value" INTEGER,
         "batchId" TEXT NOT NULL,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`)
       await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "GameEvent_gameId_idx" ON "GameEvent"("gameId")`)
+      // Added after first release; ignore "duplicate column" on tables that have it
+      await prisma.$executeRawUnsafe(`ALTER TABLE "GameEvent" ADD COLUMN "value" INTEGER`).catch(() => {})
     })().catch(e => { tableReady = null; throw e })
   }
   return tableReady
@@ -48,7 +51,7 @@ export async function syncGameFromEvents(gameId: string, extraPlayerIds: string[
   }
 
   await Promise.all(Object.entries(teamByPlayer).map(([playerId, teamId]) => {
-    const { plusMinus: _pm, playerId: _p, teamId: _t, ...stats } = live.lines[playerId] ?? emptyLine(playerId, teamId)
+    const { plusMinus: _pm, seconds: _s, playerId: _p, teamId: _t, ...stats } = live.lines[playerId] ?? emptyLine(playerId, teamId)
     return prisma.playerGameStat.upsert({
       where: { playerId_gameId: { playerId, gameId } },
       update: stats,
