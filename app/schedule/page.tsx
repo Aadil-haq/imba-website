@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface Team { id: string; name: string; slug: string; color: string; logo?: string | null | undefined }
+interface LiveGame {
+  id: string; homeScore: number; awayScore: number; period: number; clock: string
+  homeTeam: { id: string; name: string }; awayTeam: { id: string; name: string }
+}
 interface Game {
   id: string
   homeTeamId: string
@@ -232,7 +236,8 @@ function SchedulePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [games, setGames] = useState<Game[]>([])
+  const [rawGames, setGames] = useState<Game[]>([])
+  const [liveGames, setLiveGames] = useState<LiveGame[] | null>(null)
   const [teamLogos, setTeamLogos] = useState<Record<string, string | null>>({})
   const [loading, setLoading] = useState(true)
   const [seasonsLoaded, setSeasonsLoaded] = useState(false)
@@ -285,6 +290,27 @@ function SchedulePageContent() {
       .then(data => setTeamLogos(data))
       .catch(() => {})
   }, [selectedSeason, selectedLeague, seasonsLoaded])
+
+  // Poll games in progress so live scores update without a reload
+  useEffect(() => {
+    const loadLive = () => fetch('/api/games/live')
+      .then(r => r.json())
+      .then(data => setLiveGames(Array.isArray(data) ? data : []))
+      .catch(() => {})
+    loadLive()
+    const t = setInterval(loadLive, 15000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Overlay live scores; once the live feed has loaded it decides what's live,
+  // so a stale cached schedule can't keep showing a finished game as live
+  const liveById = new Map((liveGames ?? []).map(g => [g.id, g]))
+  const games = rawGames.map(g => {
+    const lg = liveById.get(g.id)
+    if (lg && !g.played) return { ...g, homeScore: lg.homeScore, awayScore: lg.awayScore }
+    if (liveGames && !g.played && g.homeScore !== null) return { ...g, homeScore: null, awayScore: null }
+    return g
+  })
 
   const closeModal = useCallback(() => setSelectedGameId(null), [])
 
@@ -401,6 +427,30 @@ function SchedulePageContent() {
             {currentLabel}
           </div>
           <h1 style={{ color: '#ffffff', fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 900, marginBottom: '20px' }}>Season Schedule</h1>
+
+          {/* Live now, whatever season is selected */}
+          {liveGames && liveGames.length > 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ color: '#ff6b6b', fontSize: '11px', fontWeight: 800, letterSpacing: '0.12em', marginBottom: '8px' }}>● LIVE NOW</div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {liveGames.map(g => (
+                  <Link key={g.id} href={`/games/${g.id}`} style={{
+                    textDecoration: 'none', backgroundColor: '#1a0d0d', border: '1px solid #c0392b66', borderRadius: '10px',
+                    padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0,
+                  }}>
+                    <span style={{ color: '#fff', fontSize: '14px', fontWeight: 700 }}>
+                      {g.awayTeam.name} <span style={{ fontWeight: 900 }}>{g.awayScore}</span>
+                      <span style={{ color: '#555', margin: '0 6px' }}>—</span>
+                      <span style={{ fontWeight: 900 }}>{g.homeScore}</span> {g.homeTeam.name}
+                    </span>
+                    <span style={{ backgroundColor: '#c0392b', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '3px 7px', borderRadius: '4px', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                      P{g.period} {g.clock}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Filters */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -610,7 +660,7 @@ function SchedulePageContent() {
                                   backgroundColor: game.played ? '#1a4731' : isLive ? '#c0392b' : '#2a2a2a',
                                   color: game.played ? '#27AE60' : isLive ? '#fff' : '#888',
                                 }}>
-                                  {game.played ? 'FINAL' : isLive ? '● LIVE' : 'UPCOMING'}
+                                  {game.played ? 'FINAL' : isLive ? `● LIVE${liveById.get(game.id) ? ` · P${liveById.get(game.id)!.period} ${liveById.get(game.id)!.clock}` : ''}` : 'UPCOMING'}
                                 </span>
                                 {game.played && (
                                   <span style={{ color: '#444', fontSize: '11px' }}>· tap for box score</span>

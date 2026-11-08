@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db'
 import { DEFAULT_SETTINGS } from '@/app/api/admin/homepage/route'
 import StatsLeaderboard from '@/components/StatsLeaderboard'
 import StandingsWidget from '@/components/StandingsWidget'
+import LiveRefresh from '@/components/LiveRefresh'
+import { getLiveGames } from '@/lib/liveStats'
 
 function abbrev(name: string): string {
   const words = name.trim().split(/\s+/)
@@ -89,7 +91,11 @@ async function getHomeData() {
 export default async function HomePage() {
   const s = await getSiteSettings()
   const activeSeasons: string[] = s.active_seasons ? JSON.parse(s.active_seasons) : []
-  const { recentGames, upcomingGames, announcements, availableSeasons } = await getHomeData()
+  const [{ recentGames, upcomingGames, announcements, availableSeasons }, liveGames] = await Promise.all([
+    getHomeData(),
+    getLiveGames().catch(() => []),
+  ])
+  const liveIds = new Set(liveGames.map(g => g.id))
 
   return (
     <div style={{ backgroundColor: '#0f0f0f', minHeight: '100vh' }}>
@@ -97,7 +103,36 @@ export default async function HomePage() {
       {/* ── Scoreboard Ticker ── */}
       <div style={{ backgroundColor: '#0a0a0a', borderBottom: '1px solid #1a1a1a', overflowX: 'auto', scrollbarWidth: 'none' }}>
         <div style={{ display: 'flex', gap: '0', minWidth: 'max-content', padding: '0 16px' }}>
-          {[...recentGames.slice(0, 5).reverse(), ...upcomingGames.slice(0, 5)].map((game, i) => {
+          {/* Games in progress come first */}
+          {liveGames.map(game => {
+            const homeUp = game.homeScore > game.awayScore
+            const awayUp = game.awayScore > game.homeScore
+            return (
+              <Link key={game.id} href={`/games/${game.id}`} style={{ textDecoration: 'none' }}>
+                <div style={{
+                  borderRight: '1px solid #1a1a1a', borderTop: '2px solid #c0392b', backgroundColor: '#1a0d0d',
+                  padding: '12px 20px 14px', display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '190px', cursor: 'pointer',
+                }}>
+                  {[{ team: game.homeTeam, score: game.homeScore, up: homeUp }, { team: game.awayTeam, score: game.awayScore, up: awayUp }].map(({ team, score, up }) => (
+                    <div key={team.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {team.logo
+                          ? <img src={team.logo} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '50%', backgroundColor: '#fff' }} />
+                          : <div style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: team.color, flexShrink: 0 }} />
+                        }
+                        <span style={{ color: up ? '#fff' : '#aaa', fontSize: '13px', fontWeight: up ? 700 : 500 }}>{abbrev(team.name)}</span>
+                      </div>
+                      <span style={{ color: up ? '#fff' : '#aaa', fontWeight: 800, fontSize: '15px' }}>{score}</span>
+                    </div>
+                  ))}
+                  <div style={{ color: '#ff6b6b', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>
+                    ● Live · P{game.period} {game.clock}
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+          {[...recentGames.slice(0, 5).reverse(), ...upcomingGames.filter(g => !liveIds.has(g.id)).slice(0, 5)].map((game, i) => {
             const played = game.played
             const homeWon = played && game.homeScore !== null && game.awayScore !== null && game.homeScore! > game.awayScore!
             const awayWon = played && game.homeScore !== null && game.awayScore !== null && game.awayScore! > game.homeScore!
@@ -148,6 +183,8 @@ export default async function HomePage() {
           </Link>
         </div>
       </div>
+
+      {liveGames.length > 0 && <LiveRefresh intervalMs={15000} />}
 
       {/* ── Hero ── */}
       <section style={{

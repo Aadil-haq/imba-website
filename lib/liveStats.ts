@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { replayEvents, emptyLine } from '@/lib/liveStatsShared'
+import { replayEvents, emptyLine, fmtClock } from '@/lib/liveStatsShared'
 
 export * from '@/lib/liveStatsShared'
 
@@ -68,3 +68,38 @@ export async function syncGameFromEvents(gameId: string, extraPlayerIds: string[
 
   return { game, events, live }
 }
+
+// ── Games in progress ─────────────────────────────────────────────────────────
+// A game is live when it isn't final, has a running score, and the scorer has
+// logged something recently (so an abandoned scorer doesn't stay "live" forever).
+const LIVE_WINDOW_MS = 3 * 60 * 60 * 1000
+
+export async function getLiveGames() {
+  const candidates = await prisma.game.findMany({
+    where: { played: false, homeScore: { not: null }, awayScore: { not: null } },
+    include: {
+      homeTeam: { select: { id: true, name: true, slug: true, color: true, logo: true } },
+      awayTeam: { select: { id: true, name: true, slug: true, color: true, logo: true } },
+    },
+    take: 20,
+  })
+  if (!candidates.length) return []
+  await ensureGameEventTable()
+  const now = Date.now()
+
+  const live = await Promise.all(candidates.map(async game => {
+    const events = await prisma.gameEvent.findMany({ where: { gameId: game.id }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] })
+    const last = events[events.length - 1]
+    if (!last || now - new Date(last.createdAt).getTime() > LIVE_WINDOW_MS) return null
+    const r = replayEvents(events, game.homeTeamId, game.awayTeamId, now)
+    return {
+      id: game.id, season: game.season, league: game.league,
+      homeTeam: game.homeTeam, awayTeam: game.awayTeam,
+      homeScore: r.homeScore, awayScore: r.awayScore,
+      period: r.period, clock: fmtClock(r.clock.periodSec), clockRunning: r.clock.running,
+    }
+  }))
+  return live.filter((g): g is NonNullable<typeof g> => g !== null)
+}
+
+export type LiveGameSummary = Awaited<ReturnType<typeof getLiveGames>>[number]

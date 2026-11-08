@@ -23,8 +23,9 @@ export async function GET(request: Request) {
     })
     return NextResponse.json(games, {
       headers: {
-        // CDN caches for 2 min; serves stale for up to 5 min while revalidating
-        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+        // Short CDN cache so finished/started games show up quickly; live scores
+        // themselves come from /api/games/live
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
       },
     })
   } catch (error) {
