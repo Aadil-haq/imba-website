@@ -6,7 +6,7 @@
 export const EVENT_TYPES = [
   '2PM', '2PX', '3PM', '3PX', 'FTM', 'FTX',
   'REB', 'AST', 'STL', 'BLK', 'TO', 'FOUL',
-  'IN', 'OUT', 'PERIOD',
+  'IN', 'OUT', 'PERIOD', 'TIMEOUT',
   'CLOCK_START', 'CLOCK_STOP', 'CLOCK_SET',
 ] as const
 export type EventType = typeof EVENT_TYPES[number]
@@ -15,7 +15,7 @@ export const EVENT_LABELS: Record<EventType, string> = {
   '2PM': 'made 2', '2PX': 'missed 2', '3PM': 'made 3', '3PX': 'missed 3',
   FTM: 'made FT', FTX: 'missed FT', REB: 'rebound', AST: 'assist', STL: 'steal',
   BLK: 'block', TO: 'turnover', FOUL: 'foul', IN: 'checked in', OUT: 'checked out',
-  PERIOD: 'period', CLOCK_START: 'clock started', CLOCK_STOP: 'clock stopped', CLOCK_SET: 'clock set',
+  PERIOD: 'period', TIMEOUT: 'timeout', CLOCK_START: 'clock started', CLOCK_STOP: 'clock stopped', CLOCK_SET: 'clock set',
 }
 
 export const CLOCK_TYPES: string[] = ['CLOCK_START', 'CLOCK_STOP', 'CLOCK_SET']

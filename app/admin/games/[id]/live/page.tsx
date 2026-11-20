@@ -23,6 +23,7 @@ type NewEvent = { teamId: string; playerId?: string; type: EventType; period: nu
 type Mode =
   | { kind: 'stat' }
   | { kind: 'assist'; teamId: string; shooterId: string }
+  | { kind: 'rebound' }                                 // after a miss: tap whoever grabbed it
   | { kind: 'subIn'; teamId: string; outId: string }   // pick who comes in
   | { kind: 'subOut'; teamId: string; inId: string }   // floor is full: pick who goes out
 
@@ -190,8 +191,16 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
   const selectedPlayer = selected ? playersById[selected] : null
   const selectedOnCourt = !!selected && !!selectedPlayer && live.onCourt[selectedPlayer.teamId]?.includes(selected)
 
+  const HALF_DURATION = 20 * 60  // 2 × 20-minute halves
+  const PLAYER_FOUL_ALERT = 4    // player card turns red
+  const BONUS_FOULS = 6          // team in the bonus
+  const MAX_TIMEOUTS = 2         // per team per half
+
   const teamFouls = (teamId: string) =>
     events.filter(e => e.type === 'FOUL' && e.teamId === teamId && e.period === period).length
+
+  const teamTimeouts = (teamId: string) =>
+    events.filter(e => e.type === 'TIMEOUT' && e.teamId === teamId && e.period === period).length
 
   const canUndo = pending.length === 0 && myBatches.length > 0
 
@@ -200,19 +209,30 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     log([{ teamId: game.homeTeamId, type: live.clock.running ? 'CLOCK_STOP' : 'CLOCK_START', period }])
 
   const setClock = () => {
-    const input = window.prompt(`Set the P${period} clock (time elapsed in this period, m:ss)`, fmtClock(live.clock.periodSec))
+    const remaining = Math.max(0, HALF_DURATION - live.clock.periodSec)
+    const input = window.prompt(`Set remaining time in H${period} (m:ss)`, fmtClock(remaining))
     if (!input) return
     const m = input.trim().match(/^(\d{1,2})(?::(\d{1,2}))?$/)
     if (!m) { setError('Use m:ss, e.g. 12:30'); return }
-    log([{ teamId: game.homeTeamId, type: 'CLOCK_SET', period, value: parseInt(m[1]) * 60 + parseInt(m[2] ?? '0') }])
+    const remainingSec = parseInt(m[1]) * 60 + parseInt(m[2] ?? '0')
+    log([{ teamId: game.homeTeamId, type: 'CLOCK_SET', period, value: Math.max(0, HALF_DURATION - remainingSec) }])
+  }
+
+  // Two timeouts per half; a third tap clears that team's timeouts for the half
+  const logTimeout = (teamId: string) => {
+    if (teamTimeouts(teamId) < MAX_TIMEOUTS) { log([{ teamId, type: 'TIMEOUT', period }]); return }
+    const batchIds = new Set(events.filter(e => e.type === 'TIMEOUT' && e.teamId === teamId && e.period === period).map(e => e.batchId))
+    batchIds.forEach(removeBatch)
   }
 
   const nextPeriod = () => {
-    if (!confirm(`End period ${period} and start period ${period + 1}? The clock will stop and reset.`)) return
+    const label = period < 2 ? `end H${period} and start H${period + 1}` : `end H${period} and start OT`
+    if (!confirm(`${label}? The clock will stop and reset.`)) return
     log([{ teamId: game.homeTeamId, type: 'PERIOD', period: period + 1 }])
   }
 
   const clockAt = (e: LiveEvent) => live.eventClock[e.id] ?? { period: e.period, periodSec: 0 }
+  const fmtRemaining = (elapsed: number) => fmtClock(Math.max(0, HALF_DURATION - elapsed))
   const timeOfDay = (e: LiveEvent) => new Date(e.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const isSub = (items: LiveEvent[]) => items.some(i => i.type === 'IN' || i.type === 'OUT')
 
@@ -285,10 +305,18 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
 
   const clearSelection = () => { setSelected(null); setMode({ kind: 'stat' }) }
 
+  // Rebounds go to anyone on the floor (either team); with no lineup set, anyone
+  const anyoneOnFloor = live.onCourt[game.homeTeamId].length + live.onCourt[game.awayTeamId].length > 0
+  const canRebound = (p: Player) => !anyoneOnFloor || live.onCourt[p.teamId].includes(p.id)
+
   // Tapping a player: either select them, or complete the pending assist/sub
   const tapPlayer = (p: Player) => {
     if (mode.kind === 'assist') {
       if (p.teamId === mode.teamId && p.id !== mode.shooterId) log([{ teamId: p.teamId, playerId: p.id, type: 'AST', period }])
+      clearSelection(); return
+    }
+    if (mode.kind === 'rebound') {
+      if (canRebound(p)) log([{ teamId: p.teamId, playerId: p.id, type: 'REB', period }])
       clearSelection(); return
     }
     if (mode.kind === 'subIn' && p.teamId === mode.teamId && !live.onCourt[p.teamId].includes(p.id)) {
@@ -310,6 +338,9 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     const teammatesOnFloor = live.onCourt[selectedPlayer.teamId].filter(pid => pid !== selectedPlayer.id)
     if ((type === '2PM' || type === '3PM') && teammatesOnFloor.length) {
       setMode({ kind: 'assist', teamId: selectedPlayer.teamId, shooterId: selectedPlayer.id })
+    } else if (type === '2PX' || type === '3PX' || type === 'FTX') {
+      setSelected(null)
+      setMode({ kind: 'rebound' })
     } else {
       clearSelection()
     }
@@ -330,6 +361,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
 
   const prompt =
     mode.kind === 'assist' ? 'Assisted by? Tap a teammate, or skip' :
+    mode.kind === 'rebound' ? 'Rebound? Tap the player who got it' :
     mode.kind === 'subIn' ? `Who comes in for ${playersById[mode.outId]?.name}? Tap a bench player` :
     mode.kind === 'subOut' ? `Floor is full. Who goes out for ${playersById[mode.inId]?.name}?` :
     selectedPlayer ? `#${selectedPlayer.number || '–'} ${selectedPlayer.name}` : 'Tap a player, then a stat'
@@ -344,10 +376,11 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
 
   const describe = (items: LiveEvent[]) => {
     const e = items[0]
-    if (e.type === 'PERIOD') return `Start of period ${e.period}`
+    if (e.type === 'PERIOD') return `Start of H${e.period}`
     if (e.type === 'CLOCK_START') return 'Clock started'
     if (e.type === 'CLOCK_STOP') return 'Clock stopped'
-    if (e.type === 'CLOCK_SET') return `Clock set to ${fmtClock(e.value ?? 0)}`
+    if (e.type === 'CLOCK_SET') return `Clock set — ${fmtRemaining(e.value ?? 0)} remaining`
+    if (e.type === 'TIMEOUT') return `${teams.find(t => t.id === e.teamId)?.name ?? 'Team'} timeout (H${e.period} #${teamTimeouts(e.teamId)})`
     const ins = items.filter(i => i.type === 'IN')
     if (ins.length > 1) return `Starting lineups checked in (${ins.length})${items.some(i => i.type === 'CLOCK_START') ? ', clock started' : ''}`
     const sub = items.length === 2 && ins.length === 1 && items.some(i => i.type === 'OUT')
@@ -385,20 +418,22 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     const bench = roster.filter(p => !live.onCourt[team.id].includes(p.id))
     const dim = (p: Player) =>
       (mode.kind === 'assist' && (p.teamId !== mode.teamId || p.id === mode.shooterId || !live.onCourt[p.teamId].includes(p.id))) ||
+      (mode.kind === 'rebound' && !canRebound(p)) ||
       (mode.kind === 'subIn' && (p.teamId !== mode.teamId || live.onCourt[p.teamId].includes(p.id))) ||
       (mode.kind === 'subOut' && (p.teamId !== mode.teamId || !live.onCourt[p.teamId].includes(p.id)))
 
     const renderPlayer = (p: Player, big: boolean) => {
       const l = live.lines[p.id]
       const isSel = selected === p.id
+      const foulTrouble = (l?.fouls ?? 0) >= PLAYER_FOUL_ALERT
       return (
         <button
           key={p.id}
           onClick={() => tapPlayer(p)}
           style={{
             ...btn, textAlign: 'left', padding: big ? '12px' : '9px 10px',
-            backgroundColor: isSel ? team.color : big ? '#1e1e1e' : '#151515',
-            border: `2px solid ${isSel ? '#fff' : big ? team.color + '66' : '#222'}`,
+            backgroundColor: isSel ? team.color : foulTrouble ? '#3a1414' : big ? '#1e1e1e' : '#151515',
+            border: `2px solid ${isSel ? '#fff' : foulTrouble ? '#e74c3c' : big ? team.color + '66' : '#222'}`,
             opacity: dim(p) ? 0.3 : 1, fontWeight: 700,
           }}
         >
@@ -407,7 +442,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
             <span style={{ fontSize: big ? '14px' : '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
           </div>
           <div style={{ fontSize: '11px', color: isSel ? '#fff' : '#777', marginTop: '3px', fontWeight: 600 }}>
-            {l ? `${l.points} pts · ${l.rebounds} reb · ${l.assists} ast · ${l.fouls} PF` : '—'}
+            {l ? <>{`${l.points} pts · ${l.rebounds} reb · ${l.assists} ast · `}<span style={foulTrouble ? { color: isSel ? '#fff' : '#ff6b6b', fontWeight: 900 } : undefined}>{l.fouls} PF</span></> : '—'}
           </div>
           {l && (
             <div style={{ fontSize: '11px', color: isSel ? '#fff' : '#999', marginTop: '2px', fontWeight: 700 }}>
@@ -420,14 +455,26 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
 
     return (
       <div style={{ backgroundColor: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
             <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: team.color, flexShrink: 0 }} />
             <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</span>
           </div>
-          <span style={{ color: teamFouls(team.id) >= 7 ? '#F5A623' : '#666', fontSize: '11px', fontWeight: 700, flexShrink: 0 }}>
-            TEAM FOULS {teamFouls(team.id)}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {teamFouls(team.id) >= BONUS_FOULS ? (
+              <span style={{ backgroundColor: '#c0392b', color: '#fff', fontSize: '11px', fontWeight: 800, padding: '3px 7px', borderRadius: '4px' }}>
+                BONUS · {teamFouls(team.id)} FOULS
+              </span>
+            ) : (
+              <span style={{ color: '#555', fontSize: '11px', fontWeight: 700 }}>
+                H{period} FOULS {teamFouls(team.id)}
+              </span>
+            )}
+            <button onClick={() => logTimeout(team.id)}
+              style={{ ...btn, backgroundColor: teamTimeouts(team.id) > 0 ? '#3a2a10' : '#1a1a1a', color: teamTimeouts(team.id) > 0 ? '#F5A623' : '#666', border: '1px solid #333', padding: '3px 8px', fontSize: '11px', fontWeight: 700 }}>
+              TO {teamTimeouts(team.id)}/{MAX_TIMEOUTS}
+            </button>
+          </div>
         </div>
 
         <div style={{ color: '#4A9FE3', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '6px' }}>
@@ -477,10 +524,16 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
               backgroundColor: game.played ? '#1a4731' : '#5c1a1a', color: game.played ? '#27AE60' : '#ff6b6b',
               fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', letterSpacing: '0.08em', marginBottom: '4px',
             }}>{game.played ? 'FINAL' : 'LIVE'}</div>
-            <button onClick={setClock} title="Tap to correct the clock"
-              style={{ ...btn, backgroundColor: 'transparent', color: live.clock.running ? '#fff' : '#F5A623', fontSize: '22px', fontWeight: 900, padding: '0 4px', fontVariantNumeric: 'tabular-nums' }}>
-              {fmtClock(live.clock.periodSec)}
-            </button>
+            {(() => {
+              const remaining = Math.max(0, HALF_DURATION - live.clock.periodSec)
+              const clockColor = !game.played && !live.clock.running ? '#F5A623' : remaining < 60 ? '#ff6b6b' : remaining < 300 ? '#F5A623' : '#fff'
+              return (
+                <button onClick={setClock} title="Tap to set remaining time"
+                  style={{ ...btn, backgroundColor: 'transparent', color: clockColor, fontSize: '22px', fontWeight: 900, padding: '0 4px', fontVariantNumeric: 'tabular-nums' }}>
+                  {fmtClock(remaining)}
+                </button>
+              )
+            })()}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
               {!game.played && (
                 <button onClick={toggleClock}
@@ -488,10 +541,11 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
                   {live.clock.running ? '❚❚ Stop' : '▶ Start'}
                 </button>
               )}
-              <span style={{ color: '#888', fontSize: '12px', fontWeight: 700 }}>P{period}</span>
+              <span style={{ color: '#888', fontSize: '12px', fontWeight: 700 }}>H{period}</span>
               <button onClick={nextPeriod}
-                style={{ ...btn, backgroundColor: '#222', color: '#aaa', padding: '4px 8px', fontSize: '11px' }}
-              >Next ▸</button>
+                style={{ ...btn, backgroundColor: '#222', color: '#aaa', padding: '4px 8px', fontSize: '11px' }}>
+                {period < 2 ? '2nd Half ▸' : 'OT ▸'}
+              </button>
             </div>
           </div>
           <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
@@ -544,7 +598,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
             return (
               <div key={b.batchId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 0', borderBottom: '1px solid #1a1a1a', opacity: isPending ? 0.5 : 1 }}>
                 <span style={{ color: '#666', fontSize: '11px', width: '64px', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                  P{clockAt(b.items[0]).period} {fmtClock(clockAt(b.items[0]).periodSec)}
+                  H{clockAt(b.items[0]).period} {fmtRemaining(clockAt(b.items[0]).periodSec)}
                 </span>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: team?.color ?? '#444', flexShrink: 0 }} />
                 <span style={{ color: isSub(b.items) ? '#fff' : '#ccc', fontSize: '13px', flex: 1, fontWeight: isSub(b.items) ? 700 : 400 }}>{describe(b.items)}</span>
@@ -569,7 +623,7 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
             </div>
             {(selectedPlayer || mode.kind !== 'stat') && (
               <button onClick={clearSelection} style={{ ...btn, backgroundColor: '#2a2a2a', color: '#aaa', padding: '8px 12px', fontSize: '12px' }}>
-                {mode.kind === 'assist' ? 'No assist' : 'Cancel'}
+                {mode.kind === 'assist' ? 'No assist' : mode.kind === 'rebound' ? 'No rebound' : 'Cancel'}
               </button>
             )}
             <button onClick={undo} disabled={!canUndo}

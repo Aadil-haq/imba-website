@@ -19,13 +19,15 @@ async function liveState(gameId: string) {
   const game = await prisma.game.findUnique({ where: { id: gameId }, include: { homeTeam: true, awayTeam: true } })
   if (!game) return null
   const events = await getGameEvents(gameId)
-  const [homeRoster, awayRoster] = await Promise.all([
+  const [homeRoster, awayRoster, homeSubs, awaySubs] = await Promise.all([
     rosterFor(game.homeTeamId, game.season),
     rosterFor(game.awayTeamId, game.season),
+    prisma.player.findMany({ where: { teamId: game.homeTeamId, isSub: true }, orderBy: { createdAt: 'desc' } }),
+    prisma.player.findMany({ where: { teamId: game.awayTeamId, isSub: true }, orderBy: { createdAt: 'desc' } }),
   ])
 
-  // Subs (and anyone off-roster) who have events in this game
-  const known = new Set([...homeRoster, ...awayRoster].map(p => p.id))
+  // Anyone off-roster who has events in this game
+  const known = new Set([...homeRoster, ...awayRoster, ...homeSubs, ...awaySubs].map(p => p.id))
   const extraIds = [...new Set(events.map(e => e.playerId).filter((id): id is string => !!id && !known.has(id)))]
   const extras = extraIds.length ? await prisma.player.findMany({ where: { id: { in: extraIds } } }) : []
 
@@ -34,8 +36,8 @@ async function liveState(gameId: string) {
   return {
     game,
     players: {
-      [game.homeTeamId]: [...homeRoster, ...extras.filter(p => p.teamId === game.homeTeamId)],
-      [game.awayTeamId]: [...awayRoster, ...extras.filter(p => p.teamId === game.awayTeamId)],
+      [game.homeTeamId]: [...homeRoster, ...homeSubs, ...extras.filter(p => p.teamId === game.homeTeamId)],
+      [game.awayTeamId]: [...awayRoster, ...awaySubs, ...extras.filter(p => p.teamId === game.awayTeamId)],
     },
     events,
     live: replayEvents(events, game.homeTeamId, game.awayTeamId),
@@ -66,7 +68,7 @@ export async function POST(request: Request, { params }: Params) {
     const valid = incoming.filter((e: any) =>
       EVENT_TYPES.includes(e.type) &&
       (e.teamId === game.homeTeamId || e.teamId === game.awayTeamId) &&
-      (e.type === 'PERIOD' || CLOCK_TYPES.includes(e.type) || typeof e.playerId === 'string')
+      (e.type === 'PERIOD' || e.type === 'TIMEOUT' || CLOCK_TYPES.includes(e.type) || typeof e.playerId === 'string')
     )
     if (!valid.length) return NextResponse.json({ error: 'No valid events' }, { status: 400 })
 
