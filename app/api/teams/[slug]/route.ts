@@ -133,12 +133,18 @@ export async function GET(
         }
       })
     } else {
-      // No season filter — show all current team members with career stats on this team
+      // No season filter — default to the most recent season for this team
+      const defaultSeason = seasonRecords[0]?.season ?? null
+
       const players = await prisma.player.findMany({
-        where: { teamId: team.id },
+        where: defaultSeason
+          ? { teamId: team.id, season: defaultSeason, isSub: false }
+          : { teamId: team.id },
         include: {
           gameStat: {
-            where: { teamId: team.id },
+            where: defaultSeason
+              ? { teamId: team.id, game: { season: defaultSeason } }
+              : { teamId: team.id },
           },
         },
         orderBy: { number: 'asc' },
