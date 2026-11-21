@@ -171,6 +171,11 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
     })
     if (!res.ok) { setError('Could not add sub'); return }
     const p = await res.json()
+    // Register sub in this game's event log so server keeps returning them across polls
+    await fetch(api, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [{ teamId, playerId: p.id, type: 'BENCH', period: live?.period ?? 1 }] }),
+    })
     setState(prev => prev && {
       ...prev,
       players: { ...prev.players, [teamId]: [...(prev.players[teamId] ?? []).filter(x => x.id !== p.id), p] },
@@ -590,8 +595,8 @@ export default function LiveScorerPage({ params }: { params: Promise<{ id: strin
         {/* Play-by-play */}
         <div style={{ marginTop: '16px' }}>
           <div style={{ color: '#4A9FE3', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '8px' }}>PLAY-BY-PLAY</div>
-          {batches.length === 0 && <div style={{ color: '#444', fontSize: '13px' }}>Nothing logged yet.</div>}
-          {batches.slice(0, 40).map(b => {
+          {batches.filter(b => b.items.some(i => i.type !== 'BENCH')).length === 0 && <div style={{ color: '#444', fontSize: '13px' }}>Nothing logged yet.</div>}
+          {batches.filter(b => b.items.some(i => i.type !== 'BENCH')).slice(0, 40).map(b => {
             const teamId = b.items[0].playerId ? b.items[0].teamId : null
             const team = teams.find(t => t.id === teamId)
             const isPending = b.batchId.startsWith('temp-')
