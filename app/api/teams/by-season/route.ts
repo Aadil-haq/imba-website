@@ -149,9 +149,15 @@ export async function GET() {
       })
     }
 
-    // 6. Sort: active seasons first, then by name descending (most recent first heuristic)
+    // 6. Sort: active seasons first, then by most recent year descending
+    const extractYear = (s: string) => {
+      const m = s.match(/\d{4}/)
+      return m ? parseInt(m[0]) : 0
+    }
     seasonList.sort((a, b) => {
       if (a.isActive !== b.isActive) return a.isActive ? -1 : 1
+      const yearDiff = extractYear(b.season) - extractYear(a.season)
+      if (yearDiff !== 0) return yearDiff
       return b.season.localeCompare(a.season)
     })
 
