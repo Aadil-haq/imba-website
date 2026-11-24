@@ -49,6 +49,7 @@ interface BoxScore {
   homeScore: number
   awayScore: number
   date: string
+  league: string
   homeStats: PlayerStatRow[]
   awayStats: PlayerStatRow[]
 }
@@ -78,10 +79,17 @@ function pct(made: number, att: number) {
   return ((made / att) * 100).toFixed(0) + '%'
 }
 
-function StatTable({ stats, teamName, teamColor, teamLogo }: { stats: PlayerStatRow[]; teamName: string; teamColor: string; teamLogo?: string | null }) {
+function StatTable({ stats, teamName, teamColor, teamLogo, is35 }: { stats: PlayerStatRow[]; teamName: string; teamColor: string; teamLogo?: string | null; is35?: boolean }) {
   if (stats.length === 0) return (
     <div style={{ color: '#555', fontSize: '13px', padding: '16px', textAlign: 'center' }}>No stats recorded</div>
   )
+
+  const baseHeaders = ['PLAYER', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF']
+  const shotHeaders = is35
+    ? ['FGM', 'FGA', 'FG%', '3PM', '3PA', '3P%']
+    : ['FG%', '3P%', 'FT%']
+  const headers = [...baseHeaders, ...shotHeaders]
+
   return (
     <div style={{ overflowX: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
@@ -94,7 +102,7 @@ function StatTable({ stats, teamName, teamColor, teamLogo }: { stats: PlayerStat
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '480px', fontSize: '13px' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #2a2a2a' }}>
-            {['PLAYER', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3P%', 'FT%'].map(h => (
+            {headers.map(h => (
               <th key={h} style={{ padding: '6px 10px', textAlign: h === 'PLAYER' ? 'left' : 'center', color: '#555', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em' }}>{h}</th>
             ))}
           </tr>
@@ -112,9 +120,22 @@ function StatTable({ stats, teamName, teamColor, teamLogo }: { stats: PlayerStat
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#ccc' }}>{s.steals}</td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#ccc' }}>{s.blocks}</td>
               <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{s.fouls}</td>
-              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.twoPtMade + s.threeMade, s.twoPtAtt + s.threeAtt)}</td>
-              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.threeMade, s.threeAtt)}</td>
-              <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.ftMade, s.ftAtt)}</td>
+              {is35 ? (
+                <>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{(s.twoPtMade ?? 0) + (s.threeMade ?? 0)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{(s.twoPtAtt ?? 0) + (s.threeAtt ?? 0)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct((s.twoPtMade ?? 0) + (s.threeMade ?? 0), (s.twoPtAtt ?? 0) + (s.threeAtt ?? 0))}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{s.threeMade ?? 0}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{s.threeAtt ?? 0}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.threeMade ?? 0, s.threeAtt ?? 0)}</td>
+                </>
+              ) : (
+                <>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.twoPtMade + s.threeMade, s.twoPtAtt + s.threeAtt)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.threeMade, s.threeAtt)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#888' }}>{pct(s.ftMade, s.ftAtt)}</td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>
@@ -202,9 +223,9 @@ function BoxScoreModal({ gameId, onClose }: { gameId: string; onClose: () => voi
 
         {!loading && box && (
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
-            <StatTable stats={box.awayStats} teamName={box.awayTeam.name} teamColor={box.awayTeam.color} teamLogo={box.awayTeam.logo} />
+            <StatTable stats={box.awayStats} teamName={box.awayTeam.name} teamColor={box.awayTeam.color} teamLogo={box.awayTeam.logo} is35={/35\+/.test(box.league ?? '')} />
             <div style={{ height: '1px', backgroundColor: '#2a2a2a' }} />
-            <StatTable stats={box.homeStats} teamName={box.homeTeam.name} teamColor={box.homeTeam.color} teamLogo={box.homeTeam.logo} />
+            <StatTable stats={box.homeStats} teamName={box.homeTeam.name} teamColor={box.homeTeam.color} teamLogo={box.homeTeam.logo} is35={/35\+/.test(box.league ?? '')} />
           </div>
         )}
 
@@ -439,6 +460,8 @@ function SchedulePageContent({ initialGames, initialSeason, initialSeasonOptions
             {dates.map(dateKey => {
               const { label, playoff, byeTeams } = groupLabelMap[dateKey]
               const gamesInGroup = [...groups[dateKey]].sort((a, b) => {
+                const dateCompare = a.date.slice(0, 10).localeCompare(b.date.slice(0, 10))
+                if (dateCompare !== 0) return dateCompare
                 const parseTime = (t: string) => {
                   const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
                   if (!m) return 0

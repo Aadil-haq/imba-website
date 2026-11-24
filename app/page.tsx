@@ -220,17 +220,6 @@ export default async function HomePage() {
                 </Link>
               </div>
 
-              <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
-                {[
-                  { label: 'Divisions', value: s.stat_divisions ?? '2' },
-                  { label: 'Location', value: s.stat_location },
-                ].map(item => (
-                  <div key={item.label} style={{ textAlign: 'center' }}>
-                    <div style={{ color: '#fff', fontSize: 'clamp(18px,3vw,26px)', fontWeight: 900, letterSpacing: '-0.02em' }}>{item.value}</div>
-                    <div style={{ color: '#444', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{item.label}</div>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* Right: stat leaders */}
@@ -309,25 +298,7 @@ export default async function HomePage() {
               defaultSeason={activeSeasons[0] ?? availableSeasons[0] ?? ''}
             />
 
-            {/* Announcements */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              {announcements.length > 0 && (
-                <div>
-                  <div style={{ color: '#4A9FE3', fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '14px' }}>Sub Reports</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {announcements.map(ann => (
-                      <div key={ann.id} style={{ backgroundColor: '#141414', border: '1px solid #1e1e1e', borderLeft: '3px solid #4A9FE3', borderRadius: '8px', padding: '14px 16px' }}>
-                        <div style={{ color: '#fff', fontWeight: 700, fontSize: '13px', marginBottom: '4px' }}>{ann.title}</div>
-                        <div style={{ color: '#555', fontSize: '12px', lineHeight: 1.5 }}>{ann.body}</div>
-                        <div style={{ color: '#333', fontSize: '10px', marginTop: '8px' }}>
-                          {new Date(ann.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <div />
           </div>
         </div>
       </section>
