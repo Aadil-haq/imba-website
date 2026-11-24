@@ -495,6 +495,9 @@ function SchedulePageContent() {
             {dates.map(dateKey => {
               const { label, playoff, byeTeams } = groupLabelMap[dateKey]
               const gamesInGroup = [...groups[dateKey]].sort((a, b) => {
+                // Date first (Saturday before Sunday), then time, then court
+                const dateCompare = a.date.slice(0, 10).localeCompare(b.date.slice(0, 10))
+                if (dateCompare !== 0) return dateCompare
                 const parseTime = (t: string) => {
                   const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
                   if (!m) return 0
