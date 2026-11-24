@@ -20,7 +20,8 @@ export async function GET(request: Request) {
       select: {
         playerId: true,
         points: true, rebounds: true, assists: true, steals: true, blocks: true,
-        player: { select: { id: true, name: true, isSub: true, team: { select: { name: true, slug: true, color: true } } } },
+        player: { select: { id: true, name: true, isSub: true } },
+        team: { select: { name: true, slug: true, color: true } },
       },
       take: 10000,
     })
@@ -28,10 +29,10 @@ export async function GET(request: Request) {
     // Aggregate manually per player
     const agg = new Map<string, { name: string; teamName: string; teamSlug: string; teamColor: string; gp: number; pts: number; reb: number; ast: number; stl: number; blk: number }>()
     for (const r of rows) {
-      if (!r.player || r.player.isSub || !r.player.team) continue
+      if (!r.player || r.player.isSub || !r.team) continue
       const dnp = r.points === 0 && r.rebounds === 0 && r.assists === 0 && r.steals === 0 && r.blocks === 0
       if (dnp) continue
-      const cur = agg.get(r.playerId) ?? { name: r.player.name, teamName: r.player.team.name, teamSlug: r.player.team.slug, teamColor: r.player.team.color, gp: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0 }
+      const cur = agg.get(r.playerId) ?? { name: r.player.name, teamName: r.team.name, teamSlug: r.team.slug, teamColor: r.team.color, gp: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0 }
       cur.gp++
       cur.pts += r.points
       cur.reb += r.rebounds
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
     }))
 
     const top = (key: string) =>
-      [...enriched].filter(p => p.gamesPlayed >= 3).sort((a, b) => (b as any)[key] - (a as any)[key]).slice(0, 5)
+      [...enriched].filter(p => p.gamesPlayed >= 1).sort((a, b) => (b as any)[key] - (a as any)[key]).slice(0, 5)
         .map(p => ({ ...p, [key]: (p as any)[key].toFixed(1) }))
 
     return NextResponse.json({
