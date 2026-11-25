@@ -226,25 +226,28 @@ function BoxScoreModal({ gameId, onClose }: { gameId: string; onClose: () => voi
             <StatTable stats={box.awayStats} teamName={box.awayTeam.name} teamColor={box.awayTeam.color} teamLogo={box.awayTeam.logo} is35={/35\+/.test(box.league ?? '')} />
             <div style={{ height: '1px', backgroundColor: '#2a2a2a' }} />
             <StatTable stats={box.homeStats} teamName={box.homeTeam.name} teamColor={box.homeTeam.color} teamLogo={box.homeTeam.logo} is35={/35\+/.test(box.league ?? '')} />
-            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '4px' }}>
-              <Link
-                href={`/games/${gameId}`}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '6px',
-                  backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px',
-                  padding: '10px 20px', color: '#4A9FE3', fontSize: '13px', fontWeight: 700,
-                  textDecoration: 'none', letterSpacing: '0.03em',
-                }}
-              >
-                Show All Stats →
-              </Link>
-            </div>
           </div>
         )}
 
         {!loading && box && (box.homeStats.length === 0 && box.awayStats.length === 0) && (
           <div style={{ padding: '40px', textAlign: 'center', color: '#555', fontSize: '14px' }}>
             No player stats recorded for this game
+          </div>
+        )}
+
+        {!loading && box && (
+          <div style={{ borderTop: '1px solid #2a2a2a', padding: '14px 24px', display: 'flex', justifyContent: 'center', backgroundColor: '#0d0d0d', borderRadius: '0 0 16px 16px' }}>
+            <Link
+              href={`/games/${gameId}`}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px',
+                padding: '10px 24px', color: '#4A9FE3', fontSize: '13px', fontWeight: 700,
+                textDecoration: 'none', letterSpacing: '0.03em',
+              }}
+            >
+              Show All Stats →
+            </Link>
           </div>
         )}
       </div>
