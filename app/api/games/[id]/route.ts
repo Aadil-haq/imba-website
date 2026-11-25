@@ -58,6 +58,7 @@ export async function PATCH(
         week: body.week !== undefined ? Number(body.week) : undefined,
         homeTeamId: body.homeTeamId || undefined,
         awayTeamId: body.awayTeamId || undefined,
+        driveUrl: body.driveUrl !== undefined ? (body.driveUrl || null) : undefined,
       },
       include: { homeTeam: true, awayTeam: true },
     })
