@@ -80,19 +80,55 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
   const homeWon = game.played && game.homeScore !== null && game.awayScore !== null && game.homeScore! > game.awayScore!
   const awayWon = game.played && game.homeScore !== null && game.awayScore !== null && game.awayScore! > game.homeScore!
 
-  const statCols = [
-    { key: 'points',    label: 'PTS' },
-    { key: 'rebounds',  label: 'REB' },
-    { key: 'assists',   label: 'AST' },
-    { key: 'steals',    label: 'STL' },
-    { key: 'blocks',    label: 'BLK' },
-    { key: 'twoPtMade', label: '2PM' },
-    { key: 'twoPtAtt',  label: '2PA' },
-    { key: 'threeMade', label: '3PM' },
-    { key: 'threeAtt',  label: '3PA' },
-    { key: 'ftMade',    label: 'FTM' },
-    { key: 'ftAtt',     label: 'FTA' },
+  const pct = (made: number, att: number) => att > 0 ? `${(made / att * 100).toFixed(1)}%` : '—'
+  const is35 = /35\+/.test(game.homeTeam.league || '')
+
+  type TotalsT = { points:number;rebounds:number;assists:number;steals:number;blocks:number;fouls:number;twoPtMade:number;twoPtAtt:number;threeMade:number;threeAtt:number;ftMade:number;ftAtt:number }
+  type BoxCol = { label: string; cell: (s: typeof homeStats[0]) => React.ReactNode; total: (t: TotalsT) => React.ReactNode; highlight?: boolean; dimTotal?: boolean }
+
+  const ts = (pts: number, fga: number, fta: number) => {
+    const tsa = fga + 0.44 * fta
+    return tsa > 0 ? `${(pts / (2 * tsa) * 100).toFixed(1)}%` : '—'
+  }
+
+  const baseCols: BoxCol[] = [
+    { label: 'PTS', highlight: true, cell: s => s.points ?? 0, total: t => t.points },
+    { label: 'REB', cell: s => s.rebounds ?? 0, total: t => t.rebounds },
+    { label: 'AST', cell: s => s.assists ?? 0, total: t => t.assists },
+    { label: 'STL', cell: s => s.steals ?? 0, total: t => t.steals },
+    { label: 'BLK', cell: s => s.blocks ?? 0, total: t => t.blocks },
+    { label: 'PF',  dimTotal: true, cell: s => (s.fouls ?? 0), total: t => t.fouls },
   ]
+
+  const shotCols: BoxCol[] = is35 ? [
+    { label: 'FGM', dimTotal: true, cell: s => (s.twoPtMade??0)+(s.threeMade??0), total: t => t.twoPtMade+t.threeMade },
+    { label: 'FGA', dimTotal: true, cell: s => (s.twoPtAtt??0)+(s.threeAtt??0),   total: t => t.twoPtAtt+t.threeAtt },
+    { label: 'FG%', dimTotal: true, cell: s => pct((s.twoPtMade??0)+(s.threeMade??0),(s.twoPtAtt??0)+(s.threeAtt??0)), total: t => pct(t.twoPtMade+t.threeMade,t.twoPtAtt+t.threeAtt) },
+    { label: '2P%', dimTotal: true, cell: s => pct(s.twoPtMade??0,s.twoPtAtt??0), total: t => pct(t.twoPtMade,t.twoPtAtt) },
+    { label: '3PM', dimTotal: true, cell: s => s.threeMade ?? 0, total: t => t.threeMade },
+    { label: '3PA', dimTotal: true, cell: s => s.threeAtt ?? 0,  total: t => t.threeAtt },
+    { label: '3P%', dimTotal: true, cell: s => pct(s.threeMade??0,s.threeAtt??0), total: t => pct(t.threeMade,t.threeAtt) },
+    { label: 'FTM', dimTotal: true, cell: s => s.ftMade ?? 0, total: t => t.ftMade },
+    { label: 'FTA', dimTotal: true, cell: s => s.ftAtt ?? 0,  total: t => t.ftAtt },
+    { label: 'FT%', dimTotal: true, cell: s => pct(s.ftMade??0,s.ftAtt??0), total: t => pct(t.ftMade,t.ftAtt) },
+    { label: 'TS%', dimTotal: true, cell: s => ts(s.points??0,(s.twoPtAtt??0)+(s.threeAtt??0),s.ftAtt??0), total: t => ts(t.points,t.twoPtAtt+t.threeAtt,t.ftAtt) },
+  ] : [
+    { label: 'FGM', dimTotal: true, cell: s => (s.twoPtMade??0)+(s.threeMade??0), total: t => t.twoPtMade+t.threeMade },
+    { label: 'FGA', dimTotal: true, cell: s => (s.twoPtAtt??0)+(s.threeAtt??0),   total: t => t.twoPtAtt+t.threeAtt },
+    { label: 'FG%', dimTotal: true, cell: s => pct((s.twoPtMade??0)+(s.threeMade??0),(s.twoPtAtt??0)+(s.threeAtt??0)), total: t => pct(t.twoPtMade+t.threeMade,t.twoPtAtt+t.threeAtt) },
+    { label: '2PM', dimTotal: true, cell: s => s.twoPtMade ?? 0, total: t => t.twoPtMade },
+    { label: '2PA', dimTotal: true, cell: s => s.twoPtAtt ?? 0,  total: t => t.twoPtAtt },
+    { label: '2P%', dimTotal: true, cell: s => pct(s.twoPtMade??0,s.twoPtAtt??0), total: t => pct(t.twoPtMade,t.twoPtAtt) },
+    { label: '3PM', dimTotal: true, cell: s => s.threeMade ?? 0, total: t => t.threeMade },
+    { label: '3PA', dimTotal: true, cell: s => s.threeAtt ?? 0,  total: t => t.threeAtt },
+    { label: '3P%', dimTotal: true, cell: s => pct(s.threeMade??0,s.threeAtt??0), total: t => pct(t.threeMade,t.threeAtt) },
+    { label: 'FTM', dimTotal: true, cell: s => s.ftMade ?? 0, total: t => t.ftMade },
+    { label: 'FTA', dimTotal: true, cell: s => s.ftAtt ?? 0,  total: t => t.ftAtt },
+    { label: 'FT%', dimTotal: true, cell: s => pct(s.ftMade??0,s.ftAtt??0), total: t => pct(t.ftMade,t.ftAtt) },
+    { label: 'TS%', dimTotal: true, cell: s => ts(s.points??0,(s.twoPtAtt??0)+(s.threeAtt??0),s.ftAtt??0), total: t => ts(t.points,t.twoPtAtt+t.threeAtt,t.ftAtt) },
+  ]
+
+  const boxCols = [...baseCols, ...shotCols]
 
   function StatTable({ stats, dnpPlayers, teamName, teamColor }: {
     stats: typeof homeStats
@@ -111,13 +147,14 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
       assists: acc.assists + (s.assists ?? 0),
       steals: acc.steals + (s.steals ?? 0),
       blocks: acc.blocks + (s.blocks ?? 0),
+      fouls: acc.fouls + (s.fouls ?? 0),
       twoPtMade: acc.twoPtMade + (s.twoPtMade ?? 0),
       twoPtAtt: acc.twoPtAtt + (s.twoPtAtt ?? 0),
       threeMade: acc.threeMade + (s.threeMade ?? 0),
       threeAtt: acc.threeAtt + (s.threeAtt ?? 0),
       ftMade: acc.ftMade + (s.ftMade ?? 0),
       ftAtt: acc.ftAtt + (s.ftAtt ?? 0),
-    }), { points:0, rebounds:0, assists:0, steals:0, blocks:0, twoPtMade:0, twoPtAtt:0, threeMade:0, threeAtt:0, ftMade:0, ftAtt:0 })
+    }), { points:0, rebounds:0, assists:0, steals:0, blocks:0, fouls:0, twoPtMade:0, twoPtAtt:0, threeMade:0, threeAtt:0, ftMade:0, ftAtt:0 })
 
     return (
       <div style={{ marginBottom: '32px' }}>
@@ -137,8 +174,8 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
                 <th style={{ padding: '9px 14px', textAlign: 'left', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>PLAYER</th>
                 {live && <th style={{ padding: '9px 10px', textAlign: 'center', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>MIN</th>}
                 {live && <th style={{ padding: '9px 10px', textAlign: 'center', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>+/-</th>}
-                {statCols.map(c => (
-                  <th key={c.key} style={{ padding: '9px 10px', textAlign: 'center', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>{c.label}</th>
+                {boxCols.map(c => (
+                  <th key={c.label} style={{ padding: '9px 10px', textAlign: 'center', color: '#444', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em' }}>{c.label}</th>
                 ))}
               </tr>
             </thead>
@@ -156,17 +193,11 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
                     const pm = live.lines[s.playerId]?.plusMinus ?? 0
                     return <td style={{ padding: '10px', textAlign: 'center', color: pm > 0 ? '#27AE60' : pm < 0 ? '#e74c3c' : '#aaa', fontSize: '13px', fontWeight: 700 }}>{pm > 0 ? `+${pm}` : pm}</td>
                   })()}
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#fff', fontWeight: 700, fontSize: '13px' }}>{s.points ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.rebounds ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.assists ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.steals ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.blocks ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.twoPtMade ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.twoPtAtt ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.threeMade ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.threeAtt ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.ftMade ?? 0}</td>
-                  <td style={{ padding: '10px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>{s.ftAtt ?? 0}</td>
+                  {boxCols.map(col => (
+                    <td key={col.label} style={{ padding: '10px', textAlign: 'center', color: col.highlight ? '#fff' : '#aaa', fontWeight: col.highlight ? 700 : 400, fontSize: '13px' }}>
+                      {col.cell(s)}
+                    </td>
+                  ))}
                 </tr>
               ))}
               {/* Totals row */}
@@ -175,17 +206,11 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
                 <td style={{ padding: '10px 14px', color: '#666', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>TOTALS</td>
                 {live && <td />}
                 {live && <td />}
-                <td style={{ padding: '10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 800, fontSize: '13px' }}>{totals.points}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 700, fontSize: '13px' }}>{totals.rebounds}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 700, fontSize: '13px' }}>{totals.assists}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 700, fontSize: '13px' }}>{totals.steals}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#4A9FE3', fontWeight: 700, fontSize: '13px' }}>{totals.blocks}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#666', fontSize: '13px' }}>{totals.twoPtMade}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#666', fontSize: '13px' }}>{totals.twoPtAtt}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#666', fontSize: '13px' }}>{totals.threeMade}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#666', fontSize: '13px' }}>{totals.threeAtt}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#666', fontSize: '13px' }}>{totals.ftMade}</td>
-                <td style={{ padding: '10px', textAlign: 'center', color: '#666', fontSize: '13px' }}>{totals.ftAtt}</td>
+                {boxCols.map(col => (
+                  <td key={col.label} style={{ padding: '10px', textAlign: 'center', color: col.dimTotal ? '#666' : '#4A9FE3', fontWeight: col.dimTotal ? 400 : 700, fontSize: '13px' }}>
+                    {col.total(totals)}
+                  </td>
+                ))}
               </tr>
             </tbody>
           </table>
